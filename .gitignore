@@ -1,4 +1,12 @@
+# IDE
 .vscode
+
+# pyinstaller
+*.spec
+build
+dist
+
+# other
 bin
 *.mp4
 *.log
