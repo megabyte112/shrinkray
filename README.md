@@ -4,13 +4,20 @@
 
 # Usage
  If you are downloading a video:
+ 
     - Open shrinkray
+    
     - Paste the video link
+    
     - Wait for the magic to happen
 
  If you already have a video:
+ 
     - Drag the video onto the shrinkray file
+    
     - Wait for the magic to happen
 
 # Installation
- You must install ffmpeg and yt-dlp: either add them to PATH, or create a 'bin' folder with the ffmpeg, ffprobe, and yt-dlp binaries inside.
+ You must install [ffmpeg](https://ffmpeg.org) and [yt-dlp](https://github.com/yt-dlp/yt-dlp).
+ 
+ Either add them to PATH, or create a 'bin' folder with the ffmpeg, ffprobe, and yt-dlp binaries inside.
