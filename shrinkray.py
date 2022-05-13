@@ -1,3 +1,7 @@
+# shrinkray, by megabyte112
+# see LICENSE for license info
+
+
 import sys, os, subprocess, math, shutil, logging
 
 # run this after completion
@@ -32,7 +36,7 @@ logging.info("initialising...")
 if os.path.isdir("bin"):
     if os.name == "nt": # windows
         logging.info("host is Windows")
-        expath="\\bin"
+        expath="bin\\"
     else:   # posix
         logging.info("host is non-Windows")
         expath="/bin"
