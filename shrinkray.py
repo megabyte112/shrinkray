@@ -39,7 +39,7 @@ if os.path.isdir("bin"):
         expath="bin\\"
     else:   # posix
         logging.info("host is non-Windows")
-        expath="/bin"
+        expath="bin/"
     logging.info("using bin folder")
 else:
     expath=""
