@@ -2,6 +2,10 @@
  A tool for shrinking videos to be under a user-defined size.
  This is good for shrinking videos to be under 8MB so that they can be sent in Discord.
  It can also download videos from many sites, including YouTube and Reddit.
+ 
+ ## The .exe file is safe to use.
+ Windows Defender or other antivirus may quarantine it, this is common for compiled Python scripts.
+ If you are concerned, the source Python file is also supplied, which can be ran with [Python](https://www.python.org).
 
 # Usage
  If you are downloading a video:
