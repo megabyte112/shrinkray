@@ -1,5 +1,6 @@
 # shrinkray, by megabyte112
 # see LICENSE for license info
+# https://github.com/megabyte112/shrinkray
 
 import sys, os, subprocess, math, shutil, logging
 
@@ -128,7 +129,7 @@ if size < targetSizeKB:
     print("\nThe video is already small enough!")
     logging.info("complete!")
     input("You can now close this window.")
-    exit()
+    sys.exit()
 
 # bitrate (in Mbps) = Size / Length
 # assume 64Mb, and divide by length in seconds
@@ -209,4 +210,4 @@ if newdisplaysize > expected:
     print("If you need it to be smaller, try running shrinkray again and lowering the target size.")
 logging.info("complete!")
 input("You can now close this window.")
-exit()
+sys.exit()
