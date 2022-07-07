@@ -8,5 +8,8 @@ dist
 
 # other
 bin
+logs
+output
+download
 *.mp4
 *.log

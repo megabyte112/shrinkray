@@ -1,38 +1,33 @@
 # shrinkray, by megabyte112
-# version 1.1
 # see LICENSE for license info
 
 import sys, os, subprocess, math, shutil, logging
 
 version = "1.1"
+
+suffix = "_shrinkray"
+container = "mp4"
 arg_length = len(sys.argv)
 
-# run this after completion
-def complete():
-    global filein, size, newsize
-    # remove input file, it's not needed
-    if os.path.exists("input.mp4"):
-        os.remove("input.mp4")
-        logging.info("removed old input.mp4")
-    logging.info("complete!")
-    print("\n")
-    print("Shrinking complete!\n")
-    if newsize != size:
-        displaysize=round((size/8192)*8000)
-        newdisplaysize=round((newsize/8192)*8000)
-        print(f"Compressed {displaysize}kB into {newdisplaysize}kB\n")
-    else:
-        print("The file was already small enough!\n")
-    input("You can now close this window.")
-    exit()
+# maximum allowed resolution before scaling
+max_res_size = 1280
+
+# check folders
+if not os.path.isdir("logs"):
+    os.mkdir("logs")
+if not os.path.isdir("output"):
+    os.mkdir("output")
+if not os.path.isdir("download"):
+    os.mkdir("download")
 
 # setup logger
-if os.path.exists("shrinkray.log"):
-    os.remove("shrinkray.log")
+if os.path.exists("logs/shrinkray.log"):
+    os.remove("logs/shrinkray.log")
 logformat='%(asctime)s: %(message)s'
-logging.basicConfig(filename="shrinkray.log", filemode="w", level=logging.INFO, format=logformat)
+logging.basicConfig(filename="logs/shrinkray.log", filemode="w", level=logging.INFO, format=logformat)
 
 logging.info("shrinkray is running, version "+version)
+logging.info("tell megabyte112 about any issues!!")
 
 # verbose mode
 verbose = False
@@ -46,9 +41,11 @@ if sys.argv[arg_length - 1] == "verbose":
 if os.name == "nt": # windows
     logging.info("host is Windows")
     expath="bin\\"
+    nullfile="NUL"
 else:   # posix
     logging.info("host is non-Windows")
     expath="bin/"
+    nullfile="/dev/null"
 
 # use the "bin" folder if it exists
 # if not, assume everything is in PATH already
@@ -58,12 +55,11 @@ if not os.path.isdir("bin"):
 else:
     logging.info("using bin folder")
 
-# remove older output
-if os.path.exists("output.mp4"):
-    os.remove("output.mp4")
-    logging.info("removed old output.mp4")
+print("shrinkray, version "+version)
+print()
 
 # download video if no arguments are given
+bad_chars = [':','*','?','|','<','>']
 if arg_length < 2:
     logging.info("prepare download...")
     if os.path.exists("input.mp4"):
@@ -71,28 +67,44 @@ if arg_length < 2:
         logging.info("removed old input.mp4")
     fullurl=input("Paste a video link here.\nIt can be YouTube, Reddit, and most other video sites.\n> ")
     logging.info(f"input: \"{fullurl}\"")
-    url=fullurl.split("?")[0]               # TODO: Allow FULL youtube URLs 
+    url=fullurl.split("&")[0]
     if url != fullurl:
         logging.info(f"shortened input to: \"{url}\"")
     logging.info("attempting download")
-    print(f"\nDownloading video {url}...")
-    os.system(f"{expath}yt-dlp \"{url}\" -q -f mp4 -o input.mp4")
-    filein="input.mp4"
+    print(f"\nDownloading video...")
+    title = subprocess.getoutput(expath+"yt-dlp -e --no-playlist "+url)
+    logging.info("title: "+title)
+    filein = "download/"+title+"."+container
+    if verbose:
+        dlcommand = f"{expath}yt-dlp \"{url}\" -f mp4 --no-playlist -o \"{filein}\""
+    else:
+        dlcommand = f"{expath}yt-dlp \"{url}\" -q -f mp4 --no-playlist -o \"{filein}\""
+    logging.info("running yt-dlp with the following command")
+    logging.info(dlcommand)
+    os.system(dlcommand)
+    for char in bad_chars:
+        filein = filein.replace(char,'#')
+    print()
 else:
     filein=sys.argv[1]
-    logging.info(f"target file {filein}")
-print("\n")
+    logging.info("target file "+filein)
 
-
-
-if filein == "input.mp4":
-    outputname = "output_shrinkray.mp4"
+# figure out valid file name
+fullname = filein.split("/")
+fullname = fullname[len(fullname)-1].split("\\")
+name = fullname[len(fullname)-1].split(".")
+if len(name) == 1:
+    fileout = "output/"+name+suffix+"."+container
 else:
-    outputname = filein + "_shrinkray"
+    newname=""
+    for item in name:
+        if item != container:
+            newname += item
+    fileout = "output/"+newname+suffix+"."+container
 
 # text must be a number greater than 0
 def CheckValidInput(text):
-    return text.isnumeric() and text > 0
+    return text.isnumeric() and int(text) > 0
 
 # ask for target file size
 target_size = ""
@@ -101,20 +113,19 @@ while not CheckValidInput(target_size):
     if not CheckValidInput(target_size):
         logging.warning("rejected input: "+str(target_size))
         print("\nMake sure your input a whole number greater than 0")
-targetSizeKB = target_size * 1000
-logging.info("target size of",targetSizeKB+"KB")
+targetSizeKB = int(target_size) * 1000
+logging.info("target size: "+str(targetSizeKB)+"KB")
 
 # calculate size: no need to shrink if video is already small enough
 size=os.path.getsize(filein)/1000
 logging.info(f"size of input file: {size}kB")
 if size < targetSizeKB:
-    shutil.copy(filein, "output.mp4")
-    logging.info("video is already small enough, copying to output.mp4")
-    if os.path.exists("input.mp4"):
-        os.remove("input.mp4")
-        logging.info("removed old input.mp4")
+    shutil.copy(filein, fileout)
+    logging.info("video is already small enough, copying to "+fileout)
     newsize=size
-    complete()
+    print("\nThe video is already small enough!")
+    input("You can now close this window.")
+    exit()
 
 # bitrate (in Mbps) = Size / Length
 # assume 64Mb, and divide by length in seconds
@@ -127,8 +138,8 @@ logging.info(f"total bitrate: {totalbitrate}kbps")
 fullresolution = subprocess.getoutput(f"{expath}ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 \"{filein}\"")
 logging.info("video is "+fullresolution)
 splitres = fullresolution.split("x")
-width = splitres[0]
-height = splitres[1]
+width = int(splitres[0])
+height = int(splitres[1])
 if width > height:
     orientation = 'l'
     logging.info("video is landscape")
@@ -136,7 +147,7 @@ else:
     orientation = 'p'
     logging.info("video is portrait")
 doScale = False
-if width > 1280 or height > 1280:
+if width > max_res_size or height > max_res_size:
     doScale = True
     logging.info("scaling will be needed")
 
@@ -150,27 +161,44 @@ logging.info(f"video bitrate: {videobitrate}kbps")
 
 if doScale:
     if orientation == 'p':
-        scale = 1280 / height
-        newres = str(round(width*scale))+":1280"
+        scale = max_res_size / height
+        newres = str(round(width*scale))+":"+str(max_res_size)
     else:
-        scale = 1280 / width
-        newres = "1280:"+str(round(height*scale))
+        scale = max_res_size / width
+        newres = str(max_res_size)+":"+str(round(height*scale))
     if verbose:
-        ffmpeg_command = f"{expath}ffmpeg -i \"{filein}\" -vf scale={newres} -filter:v fps=30 -vcodec libx264 -b:v {videobitrate}k -b:a {audiobitrate}k output.mp4"
+        ffmpeg_commands = [f"{expath}ffmpeg -y -i \"{filein}\"  -vf scale={newres} -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+        f"{expath}ffmpeg -y -i \"{filein}\" -vf scale={newres} -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
     else:
-        ffmpeg_command = f"{expath}ffmpeg -hide_banner -loglevel error -nostats -i \"{filein}\" -vf scale={newres} -filter:v fps=30 -vcodec libx264 -b:v {videobitrate}k -b:a {audiobitrate}k output.mp4"
+        ffmpeg_commands = [f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -vf scale={newres} -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+        f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -vf scale={newres} -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
 else:
     if verbose:
-        ffmpeg_command = f"{expath}ffmpeg -i \"{filein}\" -filter:v fps=30 -vcodec libx264 -b:v {videobitrate}k -b:a {audiobitrate}k output.mp4"
+        ffmpeg_commands = [f"{expath}ffmpeg -y -i \"{filein}\" -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+        f"{expath}ffmpeg -y -i \"{filein}\" -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
     else:
-        ffmpeg_command = f"{expath}ffmpeg -hide_banner -loglevel error -nostats -i \"{filein}\" -filter:v fps=30 -vcodec libx264 -b:v {videobitrate}k -b:a {audiobitrate}k output.mp4"
-print("\nShrinking Video, this usually takes a while...")
-logging.info("calling ffmpeg")
-os.system()
+        ffmpeg_commands = [f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+        f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
+
+print("\nShrinking Video using two-pass, this can take a while.")
+logging.info("calling ffmpeg for two-pass, will now log commands")
+logging.info(ffmpeg_commands[0])
+print("Running pass 1...")
+os.system(ffmpeg_commands[0])
+logging.info(ffmpeg_commands[1])
+print("Running pass 2...")
+os.system(ffmpeg_commands[1])
+logging.info("called both commands")
 
 # get the new file size
-newsize=os.path.getsize("output.mp4")/1000
+newsize=os.path.getsize(fileout)/1000
 logging.info(f"size of output file: {newsize}")
 
 # done!
-complete()
+print("\nShrinking complete!\nCheck the output folder for your video.")
+displaysize=round((size/8192)*8000)
+newdisplaysize=round((newsize/8192)*8000)
+print(f"\nCompressed {displaysize}kB into {newdisplaysize}kB\n")
+input("You can now close this window.")
+logging.info("complete!")
+exit()
