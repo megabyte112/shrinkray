@@ -26,7 +26,7 @@ if os.path.exists("logs/shrinkray.log"):
 logformat='%(asctime)s: %(message)s'
 logging.basicConfig(filename="logs/shrinkray.log", filemode="w", level=logging.INFO, format=logformat)
 
-logging.info("shrinkray is running, version "+version)
+logging.info(f"shrinkray {version} is running")
 logging.info("tell megabyte112 about any issues!!")
 
 # verbose mode
@@ -124,6 +124,7 @@ if size < targetSizeKB:
     logging.info("video is already small enough, copying to "+fileout)
     newsize=size
     print("\nThe video is already small enough!")
+    logging.info("complete!")
     input("You can now close this window.")
     exit()
 
@@ -167,18 +168,18 @@ if doScale:
         scale = max_res_size / width
         newres = str(max_res_size)+":"+str(round(height*scale))
     if verbose:
-        ffmpeg_commands = [f"{expath}ffmpeg -y -i \"{filein}\"  -vf scale={newres} -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-        f"{expath}ffmpeg -y -i \"{filein}\" -vf scale={newres} -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
+        ffmpeg_commands = [f"{expath}ffmpeg -y -i \"{filein}\"  -vf scale={newres},fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+        f"{expath}ffmpeg -y -i \"{filein}\" -vf scale={newres},fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
     else:
-        ffmpeg_commands = [f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -vf scale={newres} -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-        f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -vf scale={newres} -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
+        ffmpeg_commands = [f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -vf scale={newres},fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+        f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -vf scale={newres},fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
 else:
     if verbose:
-        ffmpeg_commands = [f"{expath}ffmpeg -y -i \"{filein}\" -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-        f"{expath}ffmpeg -y -i \"{filein}\" -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
+        ffmpeg_commands = [f"{expath}ffmpeg -y -i \"{filein}\" -vf fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+        f"{expath}ffmpeg -y -i \"{filein}\" -vf fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
     else:
-        ffmpeg_commands = [f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-        f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -filter:v fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
+        ffmpeg_commands = [f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -vf fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+        f"{expath}ffmpeg -y -hide_banner -loglevel error -nostats -i \"{filein}\" -vf fps=30 -c:v libx264 -b:v {videobitrate}k -passlogfile logs/fflog -c:a aac -b:a {audiobitrate}k -pass 2 \"{fileout}\""]
 
 print("\nShrinking Video using two-pass, this can take a while.")
 logging.info("calling ffmpeg for two-pass, will now log commands")
@@ -198,7 +199,11 @@ logging.info(f"size of output file: {newsize}")
 print("\nShrinking complete!\nCheck the output folder for your video.")
 displaysize=round((size/8192)*8000)
 newdisplaysize=round((newsize/8192)*8000)
+expected = (targetSizeKB/1000)*1024
 print(f"\nCompressed {displaysize}kB into {newdisplaysize}kB\n")
-input("You can now close this window.")
+if newdisplaysize > expected:
+    print("It looks like shrinkray couldn't shrink your video enough.")
+    print("Try running again and lowering the target MB.")
 logging.info("complete!")
+input("You can now close this window.")
 exit()
