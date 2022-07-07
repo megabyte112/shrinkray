@@ -113,7 +113,9 @@ while not CheckValidInput(target_size):
     if not CheckValidInput(target_size):
         logging.warning("rejected input: "+str(target_size))
         print("\nMake sure your input a whole number greater than 0")
-targetSizeKB = int(target_size) * 1000
+
+# 95% of target size seems to provide enough "wiggle room" for most videos
+targetSizeKB = int(target_size) * 950
 logging.info("target size: "+str(targetSizeKB)+"KB")
 
 # calculate size: no need to shrink if video is already small enough
