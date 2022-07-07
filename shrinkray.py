@@ -202,8 +202,8 @@ newdisplaysize=round((newsize/8192)*8000)
 expected = (targetSizeKB/1000)*1024
 print(f"\nCompressed {displaysize}kB into {newdisplaysize}kB\n")
 if newdisplaysize > expected:
-    print("It looks like shrinkray couldn't shrink your video enough.")
-    print("Try running again and lowering the target MB.")
+    print("It looks like shrinkray couldn't shrink your video as much as expected.")
+    print("If you need it to be smaller, try running shrinkray again and lowering the target size.")
 logging.info("complete!")
 input("You can now close this window.")
 exit()
