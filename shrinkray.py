@@ -43,7 +43,7 @@ audioratio = 1/4
 
 # don't include video, and store file in audio container.
 # default: False
-audioonly = True
+audioonly = False
 
 # container to store audio when audioonly is True.
 # default: "mp3"
