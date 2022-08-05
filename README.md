@@ -23,8 +23,4 @@ This includes an audio-only mode where only the audio is encoded, and a "meme mo
     - Wait for the magic to happen
 
 # Installation
- shrinkray is a Python script, and therefore requires [Python](https://www.python.org) to be installed in order to run.
-
- You must install [FFMPEG](https://ffmpeg.org) and add it to your system path. You also need to do this with [yt-dlp](https://github.com/yt-dlp/yt-dlp) - I like to keep this within FFMPEG's bin folder.
- 
- On the first launch, you will be prompted to install dependencies. This is done using pip, which is included with Python. You will also be warned if FFMPEG can't be detected. If all is good, you can begin using shrinkray.
+ See installation instructions on the [Wiki](https://github.com/megabyte112/shrinkray/wiki/shrinkray-wiki).
