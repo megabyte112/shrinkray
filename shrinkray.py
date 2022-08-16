@@ -136,7 +136,7 @@ if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
 version = "1.3"
 
 speeds = ["placebo", "veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"]
-preset = "-preset "+speeds[speed-1]
+preset = " -preset "+speeds[speed-1]
 
 arg_length = len(sys.argv)
 
@@ -261,6 +261,7 @@ else:
 
 if audioonly:
     container = audiocontainer
+    preset = ""
 
 # convert to correct format
 splitfilein = filein.split(".")
@@ -381,9 +382,9 @@ if mute:
 
 if audioonly:
     if verbose:
-        ffmpegcmd = f"ffpb -y {preset} -i \"{filein}\" {audioargs} \"{fileout}\""
+        ffmpegcmd = f"ffpb -y -i \"{filein}\" {audioargs} \"{fileout}\""
     else:
-        ffmpegcmd = f"ffpb -y {preset} -hide_banner -i \"{filein}\" {audioargs} \"{fileout}\""
+        ffmpegcmd = f"ffpb -y -hide_banner -i \"{filein}\" {audioargs} \"{fileout}\""
     print("\nShrinking, this can take a while...\n")
     logging.info("audio shrinking using the following command")
     logging.info(ffmpegcmd)
