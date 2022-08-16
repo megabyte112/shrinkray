@@ -8,19 +8,14 @@ There are many settings within the Python file that area available to edit, to c
 This includes an audio-only mode where only the audio is encoded, and a "meme mode", where videos are encoded at a comically low bitrate.
 
 # Usage
- If you are downloading a video:
+### If you are downloading a video:
  
-    - Open shrinkray
-    
-    - Paste the video link
-    
-    - Wait for the magic to happen
+ Open shrinkray, paste the video link, and wait for the magic to happen.
 
- If you already have a video:
+
+### If you already have a video:
  
-    - Drag the video onto the shrinkray file
-    
-    - Wait for the magic to happen
+Drag the video onto the shrinkray file, and wait for the magic to happen.
 
 # Installation
  See installation instructions on the [Wiki](https://github.com/megabyte112/shrinkray/wiki/shrinkray-wiki).
