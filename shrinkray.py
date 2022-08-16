@@ -38,6 +38,11 @@ ask_size = False
 # default: 8
 default_size = 8
 
+# shrinking speed, a number between 1 and 10, higher is faster.
+# lower speeds lead to more accurate file sizes.
+# default: 8
+speed = 8
+
 ## -----[Video]----- ##
 
 # maximum allowed size of longest edge (in pixels) before scaling is needed.
@@ -128,7 +133,10 @@ if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
     sys.exit()
 
 # don't edit
-version = "1.3-pre"
+version = "1.3"
+
+speeds = ["placebo", "veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"]
+preset = "-preset "+speeds[speed-1]
 
 arg_length = len(sys.argv)
 
@@ -196,9 +204,6 @@ def GetTargetSize():
 def GetAudioChoice():
     return input("\nGet audio only? [Y/N]\n> ").lower() == "y"
 
-# yt-dlp will get this
-dlcontain = "mp4"
-
 # download video if no arguments are given
 bad_chars = [':','*','?','|','<','>']
 if arg_length < 2:
@@ -219,16 +224,18 @@ if arg_length < 2:
     p = subprocess.getstatusoutput(titlecmd)
     if p[0] != 0:
         logging.info("title grab failed with return code "+str(p[0]))
-        print("There was an issue with your video URL.\nClose this window and run shrinkray again.")
+        print("There was an issue with your video URL.\nPress [Enter] or close this window and run shrinkray again.")
         logging.shutdown()
         input("Be sure to check whether your URL is correct!")
         sys.exit()
     title = p[1].replace("\"","'")
     getfilenamecmd = f"yt-dlp \"{url}\" --get-filename --no-playlist -o \"download/{title}.%(ext)s\""
+    logging.info("fetching filename with the following command")
+    logging.info(getfilenamecmd)
     filein = subprocess.getoutput(getfilenamecmd)
+    logging.info("filename: "+filein)
     logging.info("title: "+str(title))
     url=url.replace("\"","\\\"")
-    dltype = "-f "+dlcontain
     if verbose:
         dlcommand = f"yt-dlp \"{url}\" -v --no-playlist -o \"{filein}\""
     else:
@@ -287,14 +294,18 @@ logging.info("target size: "+str(targetSizeKB)+"KB")
 size=os.path.getsize(filein)/1024   # in kiB
 logging.info(f"size of input file: {size}kiB")
 if size < targetSizeKB and not meme_mode:
+    if mute:
+        print("\nRemoving Audio...")
+        os.system(f"ffpb -y -i \"{filein}\" -an \"{fileout}\"")
+    else:
+        shutil.copy(filein, fileout)
     logging.info("file is already small enough")
     newsize=size
     print("\nThe file is already small enough!")
-    shutil.copy(filein, fileout)
     print("It has been copied to the output folder.")
     logging.info("complete!")
     logging.shutdown()
-    input("You can now close this window.")
+    input("You can now press [Enter] or close this window to exit.")
     sys.exit()
 
 # bitrate (in Mbps) = Size / Length
@@ -370,9 +381,9 @@ if mute:
 
 if audioonly:
     if verbose:
-        ffmpegcmd = f"ffpb -y -i \"{filein}\" {audioargs} \"{fileout}\""
+        ffmpegcmd = f"ffpb -y {preset} -i \"{filein}\" {audioargs} \"{fileout}\""
     else:
-        ffmpegcmd = f"ffpb -y -hide_banner -i \"{filein}\" {audioargs} \"{fileout}\""
+        ffmpegcmd = f"ffpb -y {preset} -hide_banner -i \"{filein}\" {audioargs} \"{fileout}\""
     print("\nShrinking, this can take a while...\n")
     logging.info("audio shrinking using the following command")
     logging.info(ffmpegcmd)
@@ -395,11 +406,11 @@ else:
         if audioonly:
             videoargs = ""
         if verbose:
-            ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-            f"ffpb -y -i \"{filein}\" {videoargs} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
+            ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+            f"ffpb -y -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
         else:
-            ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
+            ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
     else:
         if lowerfps:
             fpsargs = "-vf fps="+str(target_fps)
@@ -407,11 +418,11 @@ else:
             fpsargs = ""
         videoargs = f"{fpsargs} -c:v {video_codec} -b:v {videobitrate}k"
         if verbose:
-            ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-            f"ffpb -y -i \"{filein}\" {videoargs} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
+            ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+            f"ffpb -y -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
         else:
-            ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
+            ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
+            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
 
     print("\nShrinking using two-pass, this can take a while.\n")
     logging.info("calling ffmpeg for two-pass, will now log commands")
@@ -438,5 +449,5 @@ if newdisplaysize > expected:
     print("The file was still saved.")
 logging.info("complete!")
 logging.shutdown()
-input("You can now close this window.")
+input("You can now press [Enter] or close this window to exit.")
 sys.exit()
