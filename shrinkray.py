@@ -261,7 +261,6 @@ else:
 
 if audioonly:
     container = audiocontainer
-    preset = ""
 
 # convert to correct format
 splitfilein = filein.split(".")
