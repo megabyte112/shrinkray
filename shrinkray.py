@@ -107,39 +107,28 @@ import sys, os, subprocess, math, shutil, logging
 
 # check dependencies
 try:
-    import ffpb
+    import ffpb, yt_dlp
 except ImportError:
-    print("Hi, Welcome to shrinkray!")
-    print("This may be your first time here, since you have missing dependencies.")
-    print("shrinkray can automatically install dependencies for you using pip.")
-    print("You may see warning messages during pip installs, these are generally safe.\n")
-    input("Press enter to install the missing dependencies.")
-    print("Installing...\n")
+    print("Installing deps...\n")
     import pip
-    pip.main(["install","ffpb","--quiet","--exists-action","i"])
+    pip.main(["install","ffpb","yt-dlp","--exists-action","i"])
     import ffpb
     print()
-    print("Installation complete!")
+    print("Dependency Installation complete!")
     input("You now need to close and reopen shrinkray.")
     sys.exit()
 
 # check for ffmpeg
-if shutil.which("ffmpeg") is None or shutil.which("yt-dlp") is None or shutil.which("ffprobe") is None:
+if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
     print("It seems like FFMPEG isn't installed, or isn't in your system path.")
-    print("Download FFMPEG here: https://ffmpeg.org/download.html")
+    print("Refer to shrinkray's guide for more info.")
+    print("https://github.com/megabyte112/shrinkray/wiki/shrinkray-wiki")
     print()
-    print("Installing FFMPEG can be more complex than other apps,")
-    print("but a quick web search and you should be good.")
-    print()
-    print("You also need to download yt-dlp and add it to FFMPEG's 'bin' folder.")
-    print("Download yt-dlp here: https://github.com/yt-dlp/yt-dlp/releases")
-    print()
-    print("Make sure to add the folder to path!")
     input("When you're done, reopen shrinkray, and you're all set.")
     sys.exit()
 
 # don't edit
-version = "1.2"
+version = "1.3-pre"
 
 arg_length = len(sys.argv)
 
@@ -235,20 +224,24 @@ if arg_length < 2:
         input("Be sure to check whether your URL is correct!")
         sys.exit()
     title = p[1].replace("\"","'")
-    filein = "download/"+str(title)+"."+dlcontain
+    getfilenamecmd = f"yt-dlp \"{url}\" --get-filename --no-playlist -o \"download/{title}.%(ext)s\""
+    filein = subprocess.getoutput(getfilenamecmd)
     logging.info("title: "+str(title))
     url=url.replace("\"","\\\"")
     dltype = "-f "+dlcontain
     if verbose:
-        dlcommand = f"yt-dlp \"{url}\" -v {dltype} --no-playlist -o \"{filein}\""
+        dlcommand = f"yt-dlp \"{url}\" -v --no-playlist -o \"{filein}\""
     else:
-        dlcommand = f"yt-dlp \"{url}\" --quiet --progress {dltype} --no-playlist -o \"{filein}\""
+        dlcommand = f"yt-dlp \"{url}\" --quiet --progress  --no-playlist -o \"{filein}\""
     print("Downloading video...")
     logging.info("downloading video with the following command")
     logging.info(dlcommand)
     os.system(dlcommand)
     for char in bad_chars:
-        filein = filein.replace(char,'#')
+        if os.name == "nt":
+            filein = filein.replace(char,'#')
+        else:
+            filein = filein.replace(char,'?')
 else:
     filein=sys.argv[1]
     logging.info("target file "+filein)
