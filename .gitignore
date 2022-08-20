@@ -1,13 +1,4 @@
-# IDE
 .vscode
-
-# pyinstaller
-*.spec
-build
-dist
-
-# other
-bin
 logs
 output
 download
