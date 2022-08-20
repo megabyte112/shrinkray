@@ -66,15 +66,18 @@ max_res_size = 1280
 # default: 30
 target_fps = 30
 
-# force ffmpeg to use the chosen container
-# default: False
-force_container = False
+# force ffmpeg to use the chosen container and codec.
+# setting this to False can cause issues such as failure or a broken progress bar.
+# default: True
+force_container = True
 
 # container to contain video files.
+# only used when force_container is True.
 # default: "mp4"
 container = "mp4"
 
 # video codec to use.
+# only used when force_container is True.
 # default: "libx264"
 video_codec = "libx264"
 
@@ -117,6 +120,24 @@ audio_codec = "libmp3lame"
 # default: False
 meme_mode = False
 
+# makes the volume 25x louder, and adds some bass.
+# this is for those crunchy earrape memes.
+# default: False
+loud = False
+
+## -----[Codecs]----- ##
+
+# the preferred codecs to use for each container.
+# don't mess with this if you don't know what you're doing.
+# only applied when force_container is false.
+preferred_vcodecs = {
+    "mp4":"libx264",
+    "mkv":"libx264",
+    "mov":"libx264",
+    "webm":"libvpx-vp9",
+    "avi":"libvpx-vp9"
+}
+
 ### -------[~~End of Settings~~]------- ###
 
 # Everything below this point is actual code.
@@ -150,15 +171,10 @@ if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
     sys.exit()
 
 # don't edit
-version = "1.3.1-pre"
+version = "1.4"
 
 speeds = ["placebo", "veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"]
 preset = " -preset "+speeds[speed-1]
-
-if force_container:
-    vcodecs = f" -c:v {video_codec}"
-else:
-    vcodecs = ""
 
 arg_length = len(sys.argv)
 
@@ -197,8 +213,6 @@ if send_notifs:
     notif_smallenough.message = "The file was already small enough."
 
 # setup logger
-if os.path.exists("logs/shrinkray.log"):
-    os.remove("logs/shrinkray.log")
 logformat='%(asctime)s: %(message)s'
 logging.basicConfig(filename=f"logs/shrinkray_{launchtime}.log", filemode="w", level=logging.INFO, format=logformat)
 
@@ -240,6 +254,9 @@ elif audioonly:
     print("\nWARNING: Output will be audio only!")
 elif mute:
     print("\nWARNING: Video will be muted!")
+if loud:
+    print("i hope your ears are okay")
+    print("(loud mode enabled)")
 
 # text must be a number greater than 0
 def CheckValidInput(text):
@@ -302,6 +319,7 @@ if arg_length < 2:
         input("Be sure to check whether your URL is correct!")
         sys.exit()
     title = p[1].replace("\"","'")
+    title = title.replace("/","#")
     logging.info("title: "+str(title))
     getfilenamecmd = f"yt-dlp \"{url}\" --get-filename --no-playlist --no-warnings -o \"download/{title}.%(ext)s\""
     logging.info("fetching filename with the following command")
@@ -324,11 +342,16 @@ else:
         target_size = GetTargetSize()
     else:
         target_size = default_size
-    if not meme_mode:
+    if ask_audio:
         audioonly = GetAudioChoice()
 
 if audioonly:
     container = audiocontainer
+
+if loud:
+    audiofilters = "-af volume=20,acrusher=.1:1:64:0:log,bass=g=5 "
+else:
+    audiofilters = ""
 
 # convert to correct format
 splitfilein = filein.split(".")
@@ -364,7 +387,7 @@ logging.info("target size: "+str(targetSizeKB)+"KB")
 # calculate size: no need to shrink if file is already small enough
 size=os.path.getsize(filein)/1024   # in kiB
 logging.info(f"size of input file: {size}kiB")
-if size < targetSizeKB and not meme_mode:
+if size < targetSizeKB and not (meme_mode or loud):
     if mute:
         print("\nRemoving Audio...")
         os.system(f"ffpb -y -i \"{filein}\" -an \"{fileout}\"")
@@ -449,11 +472,11 @@ logging.info(f"audio bitrate: {audiobitrate}kbps")
 logging.info(f"video bitrate: {videobitrate}kbps")
 logging.info(f"total bitrate: {totalbitrate}kbps")
 
-audioargs = f"-c:a {audio_codec} -b:a {audiobitrate}k"
 if mute:
     audioargs = "-an"
 
 if audioonly:
+    audioargs = f"-c:a {audio_codec} -b:a {audiobitrate}k {audiofilters}"
     if verbose:
         ffmpegcmd = f"ffpb -y -i \"{filein}\" {audioargs} \"{fileout}\""
     else:
@@ -465,40 +488,42 @@ if audioonly:
     logging.info(ffmpegcmd)
     os.system(ffmpegcmd)
     logging.info("called command")
-
 else:
+    audioargs = f"-b:a {audiobitrate}k {audiofilters}"
+    if not force_container:
+        video_codec = preferred_vcodecs[container]
     if doScale:
         if lowerfps:
-            fpsargs = ",fps="+str(target_fps)
+            fpsargs = ",fps="+str(target_fps)+" "
         else:
-            fpsargs = ""
+            fpsargs = " "
         if orientation == 'p':
             scale = max_res_size / height
             newres = str(round((width*scale)/2)*2)+":"+str(max_res_size)
         else:
             scale = max_res_size / width
             newres = str(max_res_size)+":"+str(round((height*scale)/2)*2)
-        videoargs = f"-vf scale={newres}{fpsargs} -c:v {video_codec} -b:v {videobitrate}k"
+        videoargs = f"-vf scale={newres}{fpsargs}-c:v {video_codec} -b:v {videobitrate}k"
         if audioonly:
             videoargs = ""
         if verbose:
-            ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-            f"ffpb -y -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
+            ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
+            f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs} -pass 2 \"{fileout}\""]
         else:
-            ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
+            ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
+            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs} -pass 2 \"{fileout}\""]
     else:
         if lowerfps:
-            fpsargs = "-vf fps="+str(target_fps)
+            fpsargs = "-vf fps="+str(target_fps)+" "
         else:
             fpsargs = ""
-        videoargs = f"{fpsargs} -c:v {video_codec} -b:v {videobitrate}k"
+        videoargs = f"{fpsargs}-c:v {video_codec} -b:v {videobitrate}k"
         if verbose:
-            ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-            f"ffpb -y -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
+            ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
+            f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs} -pass 2 \"{fileout}\""]
         else:
-            ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog -pass 1 -f null {nullfile}",
-            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs} {preset} -passlogfile logs/fflog {audioargs} -pass 2 \"{fileout}\""]
+            ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
+            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs} -pass 2 \"{fileout}\""]
 
     print("\nShrinking using two-pass, this can take a while.\n")
     logging.info("calling ffmpeg for two-pass, will now log commands")
@@ -522,13 +547,13 @@ if newdisplaysize == 0:
     logging.warning("failed!")
     if send_notifs:
         notif_failed.send()
-    print("Shrinking failed! Try adjusting some settings.")
+    print("\nShrinking failed! Try adjusting some settings.")
     print("If you can't fix it, tell megabyte112 or open a GitHub issue.")
 elif newdisplaysize > expected:
     logging.info("file is larger than expected!")
     if send_notifs:
         notif_toobig.send()
-    print("It looks like shrinkray couldn't shrink your file as much as you requested.")
+    print("\nIt looks like shrinkray couldn't shrink your file as much as you requested.")
     print("If you need it to be smaller, try lowering the target size and running shrinkray again.")
     print("The file was still saved.")
 else:
