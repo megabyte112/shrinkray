@@ -192,7 +192,7 @@ if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
     sys.exit()
 
 # don't edit
-version = "1.4"
+version = "1.4.1"
 
 speeds = ["placebo", "veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"]
 preset = " -preset "+speeds[speed-1]
