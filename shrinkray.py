@@ -38,6 +38,10 @@ ask_size = False
 # default: False
 ask_speed = False
 
+# ask the user if notifs should be sent each launch
+# default: False
+ask_notifs = False
+
 # default target file size in MB.
 # default: 8
 default_size = 8
@@ -52,7 +56,8 @@ speed = 8
 # default: True
 wait_when_done = True
 
-# send desktop notifications when shrinkray completes
+# send desktop notifications when shrinkray completes.
+# useless if ask_notifs is True.
 # default: True
 send_notifs = True
 
@@ -120,16 +125,32 @@ audio_codec = "libmp3lame"
 # default: False
 meme_mode = False
 
-# makes the volume 25x louder, and adds some bass.
+# makes the volume louder, and adds some bass.
 # this is for those crunchy earrape memes.
 # default: False
 loud = False
 
+# amplification.
+# only effective when loud is True.
+# default: 25
+volume_multiplier = 25
+
+# bass boost.
+# only effective when loud is True.
+# default: 2
+bass_multiplier = 2
+
+# how "crunchy" the audio should sound.
+# only effective when loud is True.
+# default: 64
+crunchiness = 64
+
 ## -----[Codecs]----- ##
 
 # the preferred codecs to use for each container.
+# only applies when force_container is False.
 # don't mess with this if you don't know what you're doing.
-# only applied when force_container is false.
+
 preferred_vcodecs = {
     "mp4":"libx264",
     "mkv":"libx264",
@@ -189,28 +210,27 @@ if not os.path.isdir("download"):
     os.mkdir("download")
 
 # configure notifs
-if send_notifs:
-    notif_convert = notifypy.Notify()
-    notif_convert.title = "Converting"
-    notif_convert.message = "Media is being converted to another format."
-    notif_audiocompress = notifypy.Notify()
-    notif_audiocompress.title = "Shrinking Audio"
-    notif_audiocompress.message = "You'll be notified once compression is complete."
-    notif_twopass = notifypy.Notify()
-    notif_twopass.title = "Shrinking Video"
-    notif_twopass.message = "You'll be notified once compression is complete."
-    notif_complete = notifypy.Notify()
-    notif_complete.title = "Shrinking Complete!"
-    notif_complete.message = "Your video was compressed successfully."
-    notif_failed = notifypy.Notify()
-    notif_failed.title = "Shrinking Failed!"
-    notif_failed.message = "Your video couldn't be compressed properly."
-    notif_toobig = notifypy.Notify()
-    notif_toobig.title = "Shrinking Complete!"
-    notif_toobig.message = "The resulting file is larger than you requested."
-    notif_smallenough = notifypy.Notify()
-    notif_smallenough.title = "Complete!"
-    notif_smallenough.message = "The file was already small enough."
+notif_convert = notifypy.Notify()
+notif_convert.title = "Converting"
+notif_convert.message = "Media is being converted to another format."
+notif_audiocompress = notifypy.Notify()
+notif_audiocompress.title = "Shrinking Audio"
+notif_audiocompress.message = "You'll be notified once compression is complete."
+notif_twopass = notifypy.Notify()
+notif_twopass.title = "Shrinking Video"
+notif_twopass.message = "You'll be notified once compression is complete."
+notif_complete = notifypy.Notify()
+notif_complete.title = "Shrinking Complete!"
+notif_complete.message = "Your video was compressed successfully."
+notif_failed = notifypy.Notify()
+notif_failed.title = "Shrinking Failed!"
+notif_failed.message = "Your video couldn't be compressed properly."
+notif_toobig = notifypy.Notify()
+notif_toobig.title = "Shrinking Complete!"
+notif_toobig.message = "The resulting file is larger than you requested."
+notif_smallenough = notifypy.Notify()
+notif_smallenough.title = "Complete!"
+notif_smallenough.message = "The file was already small enough."
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
@@ -255,7 +275,7 @@ elif audioonly:
 elif mute:
     print("\nWARNING: Video will be muted!")
 if loud:
-    print("i hope your ears are okay")
+    print("\ni hope your ears are okay")
     print("(loud mode enabled)")
 
 # text must be a number greater than 0
@@ -287,6 +307,9 @@ def GetSpeed():
 def GetAudioChoice():
     return input("\nGet audio only? [Y/N]\n> ").lower() == "y"
 
+def GetNotifChoice():
+    return input("\nSend notifications? [Y/N]\n> ").lower() == "y"
+
 # download video if no arguments are given
 if arg_length < 2:
     logging.info("prepare download...")
@@ -301,6 +324,8 @@ if arg_length < 2:
         logging.info("audioonly: "+str(audioonly))
     if ask_speed:
         speed = GetSpeed()
+    if ask_notifs:
+        send_notifs = GetNotifChoice()
         
     # easter egg
     if "dQw4w9WgXcQ" in url:
@@ -321,21 +346,33 @@ if arg_length < 2:
     title = p[1].replace("\"","'")
     title = title.replace("/","#")
     logging.info("title: "+str(title))
-    getfilenamecmd = f"yt-dlp \"{url}\" --get-filename --no-playlist --no-warnings -o \"download/{title}.%(ext)s\""
+
+    # if using youtube, assume mp4 to save time
+    if force_container and container == "mp4" and ("youtube.com" in url or "youtu.be" in url):
+        typearg = "-f mp4 "
+    else:
+        typearg = ""
+
+    # find filename
+    getfilenamecmd = f"yt-dlp \"{url}\" --get-filename --no-playlist --no-warnings {typearg}-o \"download/{title}.%(ext)s\""
     logging.info("fetching filename with the following command")
     logging.info(getfilenamecmd)
     filein = subprocess.getoutput(getfilenamecmd)
     logging.info("filename: "+filein)
+
+    # escape quotes
     url=url.replace("\"","\\\"")
+
     if verbose:
         dlcommand = f"yt-dlp \"{url}\" -v --no-playlist -o \"{filein}\""
     else:
-        dlcommand = f"yt-dlp \"{url}\" --quiet --progress  --no-playlist --no-warnings -o \"{filein}\""
+        dlcommand = f"yt-dlp \"{url}\" --quiet --progress  --no-playlist --no-warnings {typearg}-o \"{filein}\""
     print("Downloading video...")
     logging.info("downloading video with the following command")
     logging.info(dlcommand)
     os.system(dlcommand)
 else:
+    # if user is supplying file
     filein=sys.argv[1]
     logging.info("target file "+filein)
     if ask_size:
@@ -344,12 +381,14 @@ else:
         target_size = default_size
     if ask_audio:
         audioonly = GetAudioChoice()
+    if ask_notifs:
+        send_notifs = GetNotifChoice()
 
 if audioonly:
     container = audiocontainer
 
 if loud:
-    audiofilters = "-af volume=20,acrusher=.1:1:64:0:log,bass=g=5 "
+    audiofilters = f"-af volume={volume_multiplier},acrusher=.1:1:{crunchiness}:0:log,bass=g={bass_multiplier} "
 else:
     audiofilters = ""
 
@@ -362,7 +401,7 @@ if fileincontain != container and (force_container or audioonly):
     print("\nConverting...")
     if send_notifs:
         notif_convert.send()
-    convertcommand = f"ffpb -y -i \"{filein}\" \"{filenocontain}.{container}\""
+    convertcommand = f"ffpb -y -i \"{filein}\"{preset} \"{filenocontain}.{container}\""
     logging.info(convertcommand)
     os.system(convertcommand)
     filein = filenocontain+"."+container
@@ -387,17 +426,30 @@ logging.info("target size: "+str(targetSizeKB)+"KB")
 # calculate size: no need to shrink if file is already small enough
 size=os.path.getsize(filein)/1024   # in kiB
 logging.info(f"size of input file: {size}kiB")
-if size < targetSizeKB and not (meme_mode or loud):
+if size < targetSizeKB and not meme_mode:
     if mute:
         print("\nRemoving Audio...")
-        os.system(f"ffpb -y -i \"{filein}\" -an \"{fileout}\"")
+        mutecmd = f"ffpb -y -i \"{filein}\" -an \"{fileout}\""
+        logging.info("removing audio with the following command:")
+        logging.info(mutecmd)
+        os.system(mutecmd)
+    elif loud:
+        print("\nAmplifying...")
+        amplifycmd = f"ffpb -y -i \"{filein}\" {audiofilters}\"{fileout}\""
+        logging.info("amplifying with the following command:")
+        logging.info(amplifycmd)
+        os.system(amplifycmd)
     else:
         shutil.copy(filein, fileout)
     if send_notifs:
         notif_smallenough.send()
     logging.info("file is already small enough")
-    newsize=size
-    print("\nThe file is already small enough!")
+    newsize=os.path.getsize(fileout)/1000
+    displaysize=round((size/8192)*8000)
+    newdisplaysize=round((newsize/8192)*8000)
+    logging.info(f"size of output file: {newdisplaysize}")
+    print(f"\n{displaysize}kB -> {newdisplaysize}kB\n")
+    print("The file is already small enough!")
     print("It has been copied to the output folder.")
     logging.info("complete!")
     logging.shutdown()
@@ -508,10 +560,10 @@ else:
             videoargs = ""
         if verbose:
             ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-            f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs} -pass 2 \"{fileout}\""]
+            f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
         else:
             ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs} -pass 2 \"{fileout}\""]
+            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
     else:
         if lowerfps:
             fpsargs = "-vf fps="+str(target_fps)+" "
@@ -520,10 +572,10 @@ else:
         videoargs = f"{fpsargs}-c:v {video_codec} -b:v {videobitrate}k"
         if verbose:
             ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-            f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs} -pass 2 \"{fileout}\""]
+            f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
         else:
             ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs} -pass 2 \"{fileout}\""]
+            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
 
     print("\nShrinking using two-pass, this can take a while.\n")
     logging.info("calling ffmpeg for two-pass, will now log commands")
@@ -554,6 +606,7 @@ elif newdisplaysize > expected:
     if send_notifs:
         notif_toobig.send()
     print("\nIt looks like shrinkray couldn't shrink your file as much as you requested.")
+    print(f"\n{displaysize}kB -> {newdisplaysize}kB\n")
     print("If you need it to be smaller, try lowering the target size and running shrinkray again.")
     print("The file was still saved.")
 else:
