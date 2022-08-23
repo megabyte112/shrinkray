@@ -38,9 +38,17 @@ ask_size = False
 # default: False
 ask_speed = False
 
-# ask the user if notifs should be sent each launch
+# ask the user if notifications should be sent each launch.
 # default: False
 ask_notifs = False
+
+# ask the user for meme mode each launch.
+# default: False
+ask_meme = False
+
+# ask the user for loud mode each launch.
+# default: False
+ask_loud = False
 
 # default target file size in MB.
 # default: 8
@@ -49,12 +57,16 @@ default_size = 8
 # shrinking speed, a number between 1 and 10, higher is faster.
 # lower speeds lead to more accurate file sizes.
 # useless when ask_speed is True.
-# default: 8
-speed = 8
+# default: 5
+speed = 5
 
 # wait for enter key before closing.
 # default: True
 wait_when_done = True
+
+# open in default file manager when done.
+# default: True
+open_when_done = True
 
 # send desktop notifications when shrinkray completes.
 # useless if ask_notifs is True.
@@ -132,8 +144,8 @@ loud = False
 
 # amplification.
 # only effective when loud is True.
-# default: 25
-volume_multiplier = 25
+# default: 5
+volume_multiplier = 5
 
 # bass boost.
 # only effective when loud is True.
@@ -167,38 +179,13 @@ preferred_vcodecs = {
 
 
 # okay, let's do this.
+
+# import standard libraries
 import sys, os, subprocess, math, shutil, logging, time, webbrowser
 
-# check dependencies
-try:
-    import ffpb, yt_dlp, notifypy
-except ImportError:
-    print("Installing deps...\n")
-    import pip
-    pip.main(["install","ffpb","yt-dlp","notify-py","--exists-action","i"])
-    import ffpb
-    print()
-    print("Dependency Installation complete!")
-    input("You now need to close and reopen shrinkray.")
-    sys.exit()
-
-# check for ffmpeg
-if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
-    print("It seems like FFMPEG isn't installed, or isn't in your system path.")
-    print("Refer to shrinkray's guide for more info.")
-    print("https://github.com/megabyte112/shrinkray/wiki/shrinkray-wiki")
-    print()
-    input("When you're done, reopen shrinkray, and you're all set.")
-    sys.exit()
-
-# don't edit
-version = "1.4.1"
-
-speeds = ["placebo", "veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"]
-preset = " -preset "+speeds[speed-1]
-
-arg_length = len(sys.argv)
-
+# get epoch time, this is used for logging filenames.
+# aka seconds since Jan 1 1970 0:00:00.
+# this allows multiple instances running at once.
 launchtime = int(time.time())
 
 # check folders
@@ -209,7 +196,64 @@ if not os.path.isdir("output"):
 if not os.path.isdir("download"):
     os.mkdir("download")
 
+# don't edit
+version = "1.4.2"
+
+# setup logger
+logformat='%(asctime)s: %(message)s'
+logging.basicConfig(filename=f"logs/shrinkray_{launchtime}.log", filemode="w", level=logging.INFO, format=logformat)
+if verbose:
+    logging.getLogger().addHandler(logging.StreamHandler())
+
+logging.info("starting")
+
+# determine host OS
+if os.name == "nt": # windows
+    logging.info("host is Windows")
+    nullfile="NUL"
+    clearcmd = "cls"
+else:   # posix
+    logging.info("host is non-Windows")
+    nullfile="/dev/null"
+    clearcmd = "clear"
+
+# define clear function
+def clearscreen(stage):
+    global clearcmd, version
+    os.system(clearcmd)
+    print(f"shrinkray {version} | {stage}")
+
+# check non-standard dependencies
+try:
+    import ffpb, yt_dlp, notifypy, showinfm
+    logging.info("deps already installed")
+except ImportError:
+    # time to install deps
+    logging.info("installing deps")
+    print("Installing deps...\n")
+    import pip
+    pip.main(["install","ffpb","yt-dlp","notify-py","show-in-file-manager","--exists-action","i"])
+    import ffpb, yt_dlp, notifypy, showinfm
+    os.system(clearcmd)
+    print("Dependencies have been installed,\nPlease restart shrinkray.")
+    if wait_when_done:
+        input("\nPress Enter to close.")
+    sys.exit()
+
+# check for ffmpeg
+if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
+    os.system(clearcmd)
+    print("It seems like FFMPEG isn't installed, or isn't in your system path.")
+    print("Refer to shrinkray's guide for more info.")
+    print("https://github.com/megabyte112/shrinkray/wiki/shrinkray-wiki")
+    if wait_when_done:
+        input("\nWhen you're done, reopen shrinkray, and you're all set.")
+    sys.exit()
+
+arg_length = len(sys.argv)
+
 # configure notifs
+logging.info("configuring notifs")
 notif_convert = notifypy.Notify()
 notif_convert.title = "Converting"
 notif_convert.message = "Media is being converted to another format."
@@ -231,50 +275,38 @@ notif_toobig.message = "The resulting file is larger than you requested."
 notif_smallenough = notifypy.Notify()
 notif_smallenough.title = "Complete!"
 notif_smallenough.message = "The file was already small enough."
+notif_amplify = notifypy.Notify()
+notif_amplify.title = "Amplifying"
+notif_amplify.message = "You'll be notified once complete."
+notif_mute = notifypy.Notify()
+notif_mute.title = "Removing Audio"
+notif_mute.message = "You'll be notified once complete."
 
-# setup logger
-logformat='%(asctime)s: %(message)s'
-logging.basicConfig(filename=f"logs/shrinkray_{launchtime}.log", filemode="w", level=logging.INFO, format=logformat)
+logging.info("initialization complete")
 
-if verbose:
-    logging.getLogger().addHandler(logging.StreamHandler())
+clearscreen("Waiting for user input...")
 
-# determine host OS
-if os.name == "nt": # windows
-    logging.info("host is Windows")
-    nullfile="NUL"
-    os.system("cls")
-else:   # posix
-    logging.info("host is non-Windows")
-    nullfile="/dev/null"
-    os.system("clear")
-
-logging.info(f"shrinkray {version} is running")
-logging.info("tell megabyte112 about any issues!!")
 logging.info("args: " + str(sys.argv))
 logging.info("mute: "+str(mute))
-logging.info("audioonly: "+str(audioonly))
 logging.info("audioratio: "+str(audioratio))
 logging.info("bitrate_multiplier: "+str(bitrate_multiplier))
-logging.info("meme mode: "+str(meme_mode))
-logging.info("notifs: "+str(send_notifs))
-if not ask_speed:
-    logging.info("speed: "+str(speed))
 
 # we're running!!
-print(f"Welcome back to shrinkray, version {version}")
+print("\nWelcome back to shrinkray.")
+
+logging.info(f"shrinkray {version} is running")
+logging.info("tell megabyte112 about any issues :)")
 
 if meme_mode:
     ask_size = False
     ask_audio = False
-    ask_speed = False
     print("\nhaha shitpost shrinkray go brrrrrrrrr")
     print("(meme mode is active)")
 elif audioonly:
     print("\nWARNING: Output will be audio only!")
 elif mute:
     print("\nWARNING: Video will be muted!")
-if loud:
+if loud and not mute:
     print("\ni hope your ears are okay")
     print("(loud mode enabled)")
 
@@ -282,33 +314,68 @@ if loud:
 def CheckValidInput(text):
     return text.isnumeric() and int(text) > 0
 
-def CheckValidSizeInput(text):
+def CheckValidSpeedInput(text):
     return text.isnumeric() and int(text) > 0 and int(text) <= 10
 
 # ask for target file size
 def GetTargetSize():
-    target_size = ""
-    while not CheckValidInput(target_size):
-        target_size = input("\nTarget file size in MB\n> ")
-        if not CheckValidInput(target_size):
-            logging.warning("rejected input: "+str(target_size))
+    text = "0"
+    while not CheckValidInput(text):
+        text = input("\nTarget file size in MB\n> ")
+        if text == "":
+            return default_size
+        if not CheckValidInput(text):
+            logging.warning("rejected input: "+str(text))
             print("\nMake sure your input a whole number greater than 0")
-    return target_size
+    return text
 
+# ask for speed
 def GetSpeed():
-    speed = ""
-    while not CheckValidSizeInput(speed):
-        speed = input("\nSpeed level [1-10]\n> ")
-        if not CheckValidSizeInput(speed):
-            logging.warning("rejected input: "+str(speed))
+    text = "0"
+    while not CheckValidSpeedInput(text):
+        text = input("\nSpeed level [1-10]\n> ")
+        if text == "":
+            return speed
+        if not CheckValidSpeedInput(text):
+            logging.warning("rejected input: "+str(text))
             print("\nMake sure your input a whole number between 1 and 10")
-    return speed
+    return text
 
 def GetAudioChoice():
-    return input("\nGet audio only? [Y/N]\n> ").lower() == "y"
+    global audioonly
+    text = input("\nGet audio only? [Y/N]\n> ")
+    if text.lower() == "n":
+        return False
+    elif text.lower() == "y":
+        return True
+    return audioonly
 
 def GetNotifChoice():
-    return input("\nSend notifications? [Y/N]\n> ").lower() == "y"
+    global send_notifs 
+    text = input("\nSend notifications? [Y/N]\n> ")
+    if text.lower() == "n":
+        return False
+    elif text.lower() == "y":
+        return True
+    return send_notifs
+
+def GetMemeChoice():
+    global meme_mode
+    text = input("\nMeme mode? [Y/N]\n> ")
+    if text.lower() == "n":
+        return False
+    elif text.lower() == "y":
+        return True
+    return meme_mode
+
+def GetLoudChoice():
+    global loud
+    text = input("\nLoud mode? [Y/N]\n> ")
+    if text.lower() == "n":
+        return False
+    elif text.lower() == "y":
+        return True
+    return loud
 
 # download video if no arguments are given
 if arg_length < 2:
@@ -316,23 +383,34 @@ if arg_length < 2:
     url=input("\nPaste a video link.\n> ")
     logging.info(f"input: \"{url}\"")
     if ask_size:   
-        target_size = GetTargetSize()
+        target_size = int(GetTargetSize())
     else:
         target_size = default_size
+    logging.info("target (in MB): "+str(target_size))
     if ask_audio:
         audioonly = GetAudioChoice()
-        logging.info("audioonly: "+str(audioonly))
+    logging.info("audioonly: "+str(audioonly))
     if ask_speed:
-        speed = GetSpeed()
+        speed = int(GetSpeed())
+    logging.info("speed: "+str(speed))
     if ask_notifs:
         send_notifs = GetNotifChoice()
+    logging.info("notifs: "+str(send_notifs))
+    if ask_meme:
+        meme_mode = GetMemeChoice()
+    logging.info("meme: "+str(meme_mode))
+    if ask_loud:
+        loud = GetLoudChoice()
+    logging.info("loud: "+str(loud))
+
+    clearscreen("Downloading...")
         
     # easter egg
     if "dQw4w9WgXcQ" in url:
         webbrowser.open("https://youtu.be/dQw4w9WgXcQ")
         print("you rickroll me, i rickroll you")
 
-    print("\nFetching video...")
+    print("\nFetching...")
     titlecmd = "yt-dlp -e --no-playlist --no-warnings "+url
     logging.info("fetching title with the following command")
     logging.info(titlecmd)
@@ -341,14 +419,19 @@ if arg_length < 2:
         logging.info("title grab failed with return code "+str(p[0]))
         print("There was an issue with your video URL.\nPress [Enter] or close this window and run shrinkray again.")
         logging.shutdown()
-        input("Be sure to check whether your URL is correct!")
+        print("Be sure to check whether your URL is correct!")
+        if wait_when_done:
+            input()
         sys.exit()
     title = p[1].replace("\"","'")
+    url=url.replace("\"","'")
     title = title.replace("/","#")
     logging.info("title: "+str(title))
+    print(f"Found - \"{title}\"")
 
     # if using youtube, assume mp4 to save time
     if force_container and container == "mp4" and ("youtube.com" in url or "youtu.be" in url):
+        logging.info("assuming mp4 download")
         typearg = "-f mp4 "
     else:
         typearg = ""
@@ -364,25 +447,44 @@ if arg_length < 2:
     url=url.replace("\"","\\\"")
 
     if verbose:
-        dlcommand = f"yt-dlp \"{url}\" -v --no-playlist -o \"{filein}\""
+        dlcommand = f"yt-dlp \"{url}\" -v --no-playlist {typearg}-o \"{filein}\""
     else:
-        dlcommand = f"yt-dlp \"{url}\" --quiet --progress  --no-playlist --no-warnings {typearg}-o \"{filein}\""
-    print("Downloading video...")
-    logging.info("downloading video with the following command")
+        dlcommand = f"yt-dlp \"{url}\" --quiet --progress --no-playlist --no-warnings {typearg}-o \"{filein}\""
+    print("\nDownloading...")
+    logging.info("downloading with the following command")
     logging.info(dlcommand)
     os.system(dlcommand)
 else:
     # if user is supplying file
     filein=sys.argv[1]
     logging.info("target file "+filein)
-    if ask_size:
-        target_size = GetTargetSize()
+    if ask_size:   
+        target_size = int(GetTargetSize())
     else:
         target_size = default_size
+    logging.info("target (in MB): "+str(target_size))
     if ask_audio:
         audioonly = GetAudioChoice()
+    logging.info("audioonly: "+str(audioonly))
+    if ask_speed:
+        speed = int(GetSpeed())
+    logging.info("speed: "+str(speed))
     if ask_notifs:
         send_notifs = GetNotifChoice()
+    logging.info("notifs: "+str(send_notifs))
+    if ask_meme:
+        meme_mode = GetMemeChoice()
+    logging.info("meme: "+str(meme_mode))
+    if ask_loud:
+        loud = GetLoudChoice()
+    logging.info("loud: "+str(loud))
+
+clearscreen("Running...")
+
+# determine ffmpeg preset based on speed
+speeds = ["placebo", "veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"]
+preset = " -preset "+speeds[speed-1]
+logging.info(f"preset: {speeds[speed-1]}")
 
 if audioonly:
     container = audiocontainer
@@ -398,7 +500,7 @@ fileincontain = splitfilein[len(splitfilein)-1]
 filenocontain = filein[0:len(filein)-len(fileincontain)-1]
 if fileincontain != container and (force_container or audioonly):
     logging.info("converting file to "+container+" with the following command")
-    print("\nConverting...")
+    print(f"\nConverting to {container}...")
     if send_notifs:
         notif_convert.send()
     convertcommand = f"ffpb -y -i \"{filein}\"{preset} \"{filenocontain}.{container}\""
@@ -429,18 +531,25 @@ logging.info(f"size of input file: {size}kiB")
 if size < targetSizeKB and not meme_mode:
     if mute:
         print("\nRemoving Audio...")
+        if send_notifs:
+            notif_mute.send()
         mutecmd = f"ffpb -y -i \"{filein}\" -an \"{fileout}\""
         logging.info("removing audio with the following command:")
         logging.info(mutecmd)
         os.system(mutecmd)
     elif loud:
         print("\nAmplifying...")
+        if send_notifs:
+            notif_amplify.send()
         amplifycmd = f"ffpb -y -i \"{filein}\" {audiofilters}\"{fileout}\""
         logging.info("amplifying with the following command:")
         logging.info(amplifycmd)
         os.system(amplifycmd)
     else:
         shutil.copy(filein, fileout)
+
+    clearscreen("Complete!")
+
     if send_notifs:
         notif_smallenough.send()
     logging.info("file is already small enough")
@@ -453,6 +562,8 @@ if size < targetSizeKB and not meme_mode:
     print("It has been copied to the output folder.")
     logging.info("complete!")
     logging.shutdown()
+    if open_when_done:
+        showinfm.show_in_file_manager(fileout)
     if wait_when_done:
         input("You can now press [Enter] or close this window to exit.")
     sys.exit()
@@ -530,12 +641,12 @@ if mute:
 if audioonly:
     audioargs = f"-c:a {audio_codec} -b:a {audiobitrate}k {audiofilters}"
     if verbose:
-        ffmpegcmd = f"ffpb -y -i \"{filein}\" {audioargs} \"{fileout}\""
+        ffmpegcmd = f"ffmpeg -y -i \"{filein}\" {audioargs}\"{fileout}\""
     else:
-        ffmpegcmd = f"ffpb -y -hide_banner -i \"{filein}\" {audioargs} \"{fileout}\""
+        ffmpegcmd = f"ffpb -y -hide_banner -i \"{filein}\" {audioargs}\"{fileout}\""
     if send_notifs:
         notif_audiocompress.send()
-    print("\nShrinking, this can take a while...\n")
+    print("\nShrinking, this can take a while...")
     logging.info("audio shrinking using the following command")
     logging.info(ffmpegcmd)
     os.system(ffmpegcmd)
@@ -559,8 +670,8 @@ else:
         if audioonly:
             videoargs = ""
         if verbose:
-            ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-            f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
+            ffmpeg_commands = [f"ffmpeg -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
+            f"ffmpeg -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
         else:
             ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
             f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
@@ -571,8 +682,8 @@ else:
             fpsargs = ""
         videoargs = f"{fpsargs}-c:v {video_codec} -b:v {videobitrate}k"
         if verbose:
-            ffmpeg_commands = [f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-            f"ffpb -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
+            ffmpeg_commands = [f"ffmpeg -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
+            f"ffmpeg -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
         else:
             ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
             f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
@@ -590,11 +701,12 @@ else:
     logging.info("called both commands")
 
 # done!
-newsize=os.path.getsize(fileout)/1000
+clearscreen("Complete!")
+newsize=os.path.getsize(fileout)/1024
 displaysize=round((size/8192)*8000)
 newdisplaysize=round((newsize/8192)*8000)
 logging.info(f"size of output file: {newdisplaysize}")
-expected = (targetSizeKB/1000)*1024
+expected = target_size*1024
 if newdisplaysize == 0:
     logging.warning("failed!")
     if send_notifs:
@@ -614,8 +726,10 @@ else:
     if send_notifs:
         notif_complete.send()
     print("\nShrinking complete!\nCheck the output folder for your file.")
-    print(f"\nCompressed {displaysize}kB into {newdisplaysize}kB\n")
+    print(f"\n{displaysize}kB -> {newdisplaysize}kB\n")
 logging.shutdown()
+if open_when_done:
+    showinfm.show_in_file_manager(fileout)
 if wait_when_done:
     input("You can now press [Enter] or close this window to exit.")
 sys.exit()
