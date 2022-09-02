@@ -1,4 +1,9 @@
 # shrinkray
+![GitHub last commit](https://img.shields.io/github/last-commit/megabyte112/shrinkray?style=for-the-badge)
+![GitHub issues](https://img.shields.io/github/issues-raw/megabyte112/shrinkray?label=issues&style=for-the-badge)
+![GitHub all releases](https://img.shields.io/github/downloads/megabyte112/shrinkray/total?style=for-the-badge)
+
+
  A tool for shrinking videos to be under a user-defined size.
  
  This was originally intended for shrinking videos to be under 8MB so that they can be sent in Discord, but can be used for anything requiring video compression.
