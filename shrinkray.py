@@ -221,29 +221,30 @@ else:   # posix
 def clearscreen(stage):
     global clearcmd, version
     os.system(clearcmd)
-    print(f"shrinkray {version} | {stage}")
+    print(f"shrinkray {version} | {stage}\n")
 
 # check non-standard dependencies
 try:
-    import ffpb, yt_dlp, notifypy, showinfm
+    import ffpb, yt_dlp, notifypy, showinfm, colorama
     logging.info("deps already installed")
 except ImportError:
     # time to install deps
+    clearscreen("Setup")
     logging.info("installing deps")
-    print("Installing deps...\n")
+    print("\nInstalling dependencies, you may see some warnings.\n")
     import pip
-    pip.main(["install","ffpb","yt-dlp","notify-py","show-in-file-manager","--exists-action","i"])
-    import ffpb, yt_dlp, notifypy, showinfm
-    os.system(clearcmd)
-    print("Dependencies have been installed,\nPlease restart shrinkray.")
+    pip.main(["install","--quiet","ffpb","yt-dlp","notify-py","show-in-file-manager","colorama","--exists-action","i"])
+    import ffpb, yt_dlp, notifypy, showinfm, colorama
+    clearscreen("Setup")
+    print("\nDependencies have been installed,\nPlease restart shrinkray.")
     if wait_when_done:
         input("\nPress Enter to close.")
     sys.exit()
 
 # check for ffmpeg
 if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
-    os.system(clearcmd)
-    print("It seems like FFMPEG isn't installed, or isn't in your system path.")
+    clearscreen("Setup")
+    print("\nIt seems like FFMPEG isn't installed, or isn't in your system path.")
     print("Refer to shrinkray's guide for more info.")
     print("https://github.com/megabyte112/shrinkray/wiki/shrinkray-wiki")
     if wait_when_done:
@@ -282,14 +283,14 @@ notif_mute = notifypy.Notify()
 notif_mute.title = "Removing Audio"
 notif_mute.message = "You'll be notified once complete."
 
-logging.info("initialization complete")
-
 clearscreen("Waiting for user input...")
 
 logging.info("args: " + str(sys.argv))
 logging.info("mute: "+str(mute))
 logging.info("audioratio: "+str(audioratio))
 logging.info("bitrate_multiplier: "+str(bitrate_multiplier))
+
+logging.info("initialization complete")
 
 # we're running!!
 print("\nWelcome back to shrinkray.")
@@ -309,6 +310,26 @@ elif mute:
 if loud and not mute:
     print("\ni hope your ears are okay")
     print("(loud mode enabled)")
+
+def kibiconvert(value):
+    return value*0.9765625
+
+def mebiconvert(value):
+    return round(kibiconvert(value)*100/1024)/100
+
+def printsizes(size1, size2):
+    print()
+    print("before:")
+    print(f"    {round(size1)}kB, {round(kibiconvert(size1))}kiB")
+    print(f"    {round(size1)/1000}MB, {mebiconvert(size1)}MiB")
+    print()
+    print("after:")
+    print(f"    {round(size2)}kB, {round(kibiconvert(size2))}kiB")
+    print(f"    {round(size2)/1000}MB, {mebiconvert(size2)}MiB")
+    print()
+    shrinkness = round(((size1/size2)-1)*100)
+    print(f"Shrink percentage: {shrinkness}%")
+    print()
 
 # text must be a number greater than 0
 def CheckValidInput(text):
@@ -430,7 +451,7 @@ if arg_length < 2:
     print(f"Found - \"{title}\"")
 
     # if using youtube, assume mp4 to save time
-    if force_container and container == "mp4" and ("youtube.com" in url or "youtu.be" in url):
+    if force_container and container == "mp4" and ("youtube.com" in url or "youtu.be" in url or "ytsearch:" in url):
         logging.info("assuming mp4 download")
         typearg = "-f mp4 "
     else:
@@ -526,8 +547,8 @@ targetSizeKB = int(target_size) * 1000 * bitrate_multiplier
 logging.info("target size: "+str(targetSizeKB)+"KB")
 
 # calculate size: no need to shrink if file is already small enough
-size=os.path.getsize(filein)/1024   # in kiB
-logging.info(f"size of input file: {size}kiB")
+size=os.path.getsize(filein)/1000   # in kB
+logging.info(f"size of input file: {size}kB")
 if size < targetSizeKB and not meme_mode:
     if mute:
         print("\nRemoving Audio...")
@@ -553,17 +574,25 @@ if size < targetSizeKB and not meme_mode:
     if send_notifs:
         notif_smallenough.send()
     logging.info("file is already small enough")
-    newsize=os.path.getsize(fileout)/1000
-    displaysize=round((size/8192)*8000)
-    newdisplaysize=round((newsize/8192)*8000)
-    logging.info(f"size of output file: {newdisplaysize}")
-    print(f"\n{displaysize}kB -> {newdisplaysize}kB\n")
-    print("The file is already small enough!")
-    print("It has been copied to the output folder.")
+    newdisplaysize=os.path.getsize(fileout)/1000 # in kB
+    newkibisize=kibiconvert(newdisplaysize)
+    logging.info(f"size of output file: {newdisplaysize}kB, or {newkibisize}kiB")
+    expected = target_size*1024
+    if newdisplaysize > expected:
+        logging.info("somehow, shrinkray went backwards.")
+        logging.info(f"expected {expected}kB, got {newdisplaysize}kB.")
+        print("\nCongratulations, it seems like you have broken shrinkray.")
+        print("Something happened that shouldn't be possible.")
+        print("Please open a GitHub issue, providing log, so that I can fix this.")
+        printsizes(size, newdisplaysize)
+    else:
+        print("\nThe file is already small enough!")
+        printsizes(size, newdisplaysize)
+        print("It has been copied to the output folder.")
+        if open_when_done:
+            showinfm.show_in_file_manager(fileout)
     logging.info("complete!")
     logging.shutdown()
-    if open_when_done:
-        showinfm.show_in_file_manager(fileout)
     if wait_when_done:
         input("You can now press [Enter] or close this window to exit.")
     sys.exit()
@@ -635,9 +664,6 @@ logging.info(f"audio bitrate: {audiobitrate}kbps")
 logging.info(f"video bitrate: {videobitrate}kbps")
 logging.info(f"total bitrate: {totalbitrate}kbps")
 
-if mute:
-    audioargs = "-an "
-
 if audioonly:
     audioargs = f"-c:a {audio_codec} -b:a {audiobitrate}k {audiofilters}"
     if verbose:
@@ -653,6 +679,8 @@ if audioonly:
     logging.info("called command")
 else:
     audioargs = f"-b:a {audiobitrate}k {audiofilters}"
+    if mute:
+        audioargs = "-an "
     if not force_container:
         video_codec = preferred_vcodecs[container]
     if doScale:
@@ -688,24 +716,23 @@ else:
             ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
             f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
 
-    print("\nShrinking using two-pass, this can take a while.\n")
+    print("\nShrinking using two-pass, this can take a while.")
     logging.info("calling ffmpeg for two-pass, will now log commands")
     logging.info(ffmpeg_commands[0])
     if send_notifs:
         notif_twopass.send()
-    print("Running pass 1...")
+    print("\nRunning pass 1...")
     os.system(ffmpeg_commands[0])
     logging.info(ffmpeg_commands[1])
-    print("Running pass 2...")
+    print("\nRunning pass 2...")
     os.system(ffmpeg_commands[1])
     logging.info("called both commands")
 
 # done!
 clearscreen("Complete!")
-newsize=os.path.getsize(fileout)/1024
-displaysize=round((size/8192)*8000)
-newdisplaysize=round((newsize/8192)*8000)
-logging.info(f"size of output file: {newdisplaysize}")
+newdisplaysize=round(os.path.getsize(fileout)/1000) # in kB
+newkibisize=kibiconvert(newdisplaysize)
+logging.info(f"size of output file: {newdisplaysize}kB, or {newkibisize}kiB")
 expected = target_size*1024
 if newdisplaysize == 0:
     logging.warning("failed!")
@@ -718,7 +745,7 @@ elif newdisplaysize > expected:
     if send_notifs:
         notif_toobig.send()
     print("\nIt looks like shrinkray couldn't shrink your file as much as you requested.")
-    print(f"\n{displaysize}kB -> {newdisplaysize}kB\n")
+    printsizes(size, newdisplaysize)
     print("If you need it to be smaller, try lowering the target size and running shrinkray again.")
     print("The file was still saved.")
 else:
@@ -726,7 +753,7 @@ else:
     if send_notifs:
         notif_complete.send()
     print("\nShrinking complete!\nCheck the output folder for your file.")
-    print(f"\n{displaysize}kB -> {newdisplaysize}kB\n")
+    printsizes(size, newdisplaysize)
 logging.shutdown()
 if open_when_done:
     showinfm.show_in_file_manager(fileout)
