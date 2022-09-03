@@ -636,7 +636,7 @@ logging.info(f"video bitrate: {videobitrate}kbps")
 logging.info(f"total bitrate: {totalbitrate}kbps")
 
 if mute:
-    audioargs = "-an"
+    audioargs = "-an "
 
 if audioonly:
     audioargs = f"-c:a {audio_codec} -b:a {audiobitrate}k {audiofilters}"
