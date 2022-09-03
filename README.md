@@ -1,5 +1,6 @@
 # shrinkray
 ![GitHub last commit](https://img.shields.io/github/last-commit/megabyte112/shrinkray?style=for-the-badge)
+![GitHub Release Date](https://img.shields.io/github/release-date/megabyte112/shrinkray?label=latest%20release&style=for-the-badge)
 ![GitHub issues](https://img.shields.io/github/issues-raw/megabyte112/shrinkray?label=issues&style=for-the-badge)
 ![GitHub all releases](https://img.shields.io/github/downloads/megabyte112/shrinkray/total?style=for-the-badge)
 
