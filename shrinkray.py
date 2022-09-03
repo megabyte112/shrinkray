@@ -26,29 +26,28 @@ bitrate_multiplier = 0.95
 
 # ask user whether audioonly shall be used each launch.
 # this is useless when audioonly is already True.
-# user is always asked this if using a local file.
 # default: False
-ask_audio = True
+ask_audio = False
 
 # ask user for target file size each launch.
 # default: False
-ask_size = True
+ask_size = False
 
 # ask the user for preferred speed each launch.
 # default: False
-ask_speed = True
+ask_speed = False
 
 # ask the user if notifications should be sent each launch.
 # default: False
-ask_notifs = True
+ask_notifs = False
 
 # ask the user for meme mode each launch.
 # default: False
-ask_meme = True
+ask_meme = False
 
 # ask the user for loud mode each launch.
 # default: False
-ask_loud = True
+ask_loud = False
 
 # default target file size in MB.
 # default: 8
@@ -129,6 +128,37 @@ audiocontainer = "mp3"
 # default: "libmp3lame"
 audio_codec = "libmp3lame"
 
+## ----[Colours]---- ##
+# or 'colors', whatever.
+
+# allowed colours (for all):
+# "red", "green", "blue", "cyan", "magenta", "yellow", "white"
+
+# titles.
+# default: "cyan"
+titlecol = "cyan"
+
+# when asking for user input.
+# default: "yellow"
+inputcol = "yellow"
+
+# warnings or errors.
+# default: "red"
+warningcol = "red"
+
+# usually parts of titles, like 'pass 1' or 'mp3'.
+# default: "magenta"
+othercol = "magenta"
+
+# file size numbers once completed
+# default: "cyan"
+numbercol = "cyan"
+
+# file size units once completed
+# default: "yellow"
+unitcol = "yellow"
+
+
 ## ------[Fun]------ ##
 
 # ultra high compression for those moldy shitposts.
@@ -197,7 +227,7 @@ if not os.path.isdir("download"):
     os.mkdir("download")
 
 # don't edit
-version = "1.4.3-pre"
+version = "1.5"
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
@@ -269,6 +299,29 @@ strcyan = colorama.Fore.CYAN
 strpurple = colorama.Fore.MAGENTA
 strwhite = colorama.Fore.WHITE
 
+def getcolfromtext(text):
+    if text=="red":
+        return strred
+    elif text == "green":
+        return strgreen
+    elif text == "blue":
+        return strblue
+    elif text == "cyan":
+        return strcyan
+    elif text == "magenta":
+        return strpurple
+    elif text == "yellow":
+        return stryellow
+    else:
+        return strwhite
+
+titlecolour = getcolfromtext(titlecol)
+askcolour = getcolfromtext(inputcol)
+errorcolour = getcolfromtext(warningcol)
+othercolour = getcolfromtext(othercol)
+numbercolour = getcolfromtext(numbercol)
+unitcolour = getcolfromtext(unitcol)
+
 # define clear function
 def clearscreen(stage, color):
     global clearcmd, version
@@ -305,7 +358,7 @@ notif_mute = notifypy.Notify()
 notif_mute.title = "Removing Audio"
 notif_mute.message = "You'll be notified once complete."
 
-clearscreen("Waiting for user input...", stryellow)
+clearscreen("Waiting for input...", stryellow)
 
 logging.info("args: " + str(sys.argv))
 logging.info("mute: "+str(mute))
@@ -315,21 +368,21 @@ logging.info("bitrate_multiplier: "+str(bitrate_multiplier))
 logging.info("initialization complete")
 
 # we're running!!
-print(f"\nWelcome back to {strbold}shrinkray{strreset}.")
+print(f"\n{titlecolour}Welcome back to {strbold}shrinkray{strreset}.")
 
 logging.info(f"shrinkray {version} is running")
 logging.info("tell megabyte112 about any issues :)")
 
 if meme_mode:
     ask_size = False
-    print(f"\n{strbold}{strred}haha shitpost shrinkray go brrrrrrrrr")
+    print(f"\n{strbold}{errorcolour}haha shitpost shrinkray go brrrrrrrrr")
     print(f"(meme mode is active){strreset}")
 if audioonly:
-    print(f"\n{strbold}{strred}WARNING: Output will be audio only!{strreset}")
+    print(f"\n{strbold}{errorcolour}WARNING: Output will be audio only!{strreset}")
 elif mute:
-    print(f"\n{strbold}{strred}WARNING: Video will be muted!{strreset}")
+    print(f"\n{strbold}{errorcolour}WARNING: Video will be muted!{strreset}")
 if loud and not mute:
-    print(f"\n{strbold}{strred}i hope your ears are okay")
+    print(f"\n{strbold}{errorcolour}i hope your ears are okay")
     print(f"(loud mode enabled){strreset}")
 
 def kibiconvert(value):
@@ -339,19 +392,17 @@ def mebiconvert(value):
     return round(kibiconvert(value)*100/1024)/100
 
 def printsizes(size1, size2):
-    numbercol=stryellow
-    unitcol=strcyan
     print()
-    print(f"before:")
-    print(f"    {numbercol}{round(size1)}{unitcol}kB{strwhite}, {numbercol}{round(kibiconvert(size1))}{unitcol}kiB")
-    print(f"    {numbercol}{round(size1)/1000}{unitcol}MB{strwhite}, {numbercol}{mebiconvert(size1)}{unitcol}MiB")
+    print(f"{titlecolour}before:")
+    print(f"    {numbercolour}{round(size1)}{unitcolour}kB{strwhite}, {numbercolour}{round(kibiconvert(size1))}{unitcolour}kiB")
+    print(f"    {numbercolour}{round(size1)/1000}{unitcolour}MB{strwhite}, {numbercolour}{mebiconvert(size1)}{unitcolour}MiB")
     print()
-    print(f"{strbold}{strwhite}after:")
-    print(f"    {numbercol}{round(size2)}{unitcol}kB{strwhite}, {numbercol}{round(kibiconvert(size2))}{unitcol}kiB")
-    print(f"    {numbercol}{round(size2)/1000}{unitcol}MB{strwhite}, {numbercol}{mebiconvert(size2)}{unitcol}MiB")
+    print(f"{strbold}{titlecolour}after:")
+    print(f"    {numbercolour}{round(size2)}{unitcolour}kB{strwhite}, {numbercolour}{round(kibiconvert(size2))}{unitcolour}kiB")
+    print(f"    {numbercolour}{round(size2)/1000}{unitcolour}MB{strwhite}, {numbercolour}{mebiconvert(size2)}{unitcolour}MiB")
     print(strreset)
     shrinkness = round(((size1/size2)-1)*100)
-    print(f"Shrink percentage: {strbold}{strpurple}{shrinkness}%{strreset}")
+    print(f"{titlecolour}{strbold}Shrink percentage: {othercolour}{shrinkness}%{strreset}")
     print()
 
 # text must be a number greater than 0
@@ -365,29 +416,29 @@ def CheckValidSpeedInput(text):
 def GetTargetSize():
     text = "0"
     while not CheckValidInput(text):
-        text = input(f"\n{strbold}Target file size in MB{strreset}\n> ")
+        text = input(f"\n{strbold}{askcolour}Target file size in MB{strreset}\n> ")
         if text == "":
             return default_size
         if not CheckValidInput(text):
             logging.warning("rejected input: "+str(text))
-            print(f"\n{strred}Make sure your input a whole number greater than 0!{strreset}")
+            print(f"\n{errorcolour}Make sure your input a whole number greater than 0!{strreset}")
     return text
 
 # ask for speed
 def GetSpeed():
     text = "0"
     while not CheckValidSpeedInput(text):
-        text = input(f"\n{strbold}Speed level [1-10]{strreset}\n> ")
+        text = input(f"\n{strbold}{askcolour}Speed level [1-10]{strreset}\n> ")
         if text == "":
             return speed
         if not CheckValidSpeedInput(text):
             logging.warning("rejected input: "+str(text))
-            print(f"\n{strred}Make sure your input a whole number between 1 and 10{strreset}")
+            print(f"\n{errorcolour}Make sure your input a whole number between 1 and 10{strreset}")
     return text
 
 def GetAudioChoice():
     global audioonly
-    text = input(f"\n{strbold}Get audio only?{strreset} [Y/N]\n> ")
+    text = input(f"\n{strbold}{askcolour}Get audio only?{strreset} [Y/N]\n> ")
     if text.lower() == "n":
         return False
     elif text.lower() == "y":
@@ -396,7 +447,7 @@ def GetAudioChoice():
 
 def GetNotifChoice():
     global send_notifs 
-    text = input(f"\n{strbold}Send notifications?{strreset} [Y/N]\n> ")
+    text = input(f"\n{strbold}{askcolour}Send notifications?{strreset} [Y/N]\n> ")
     if text.lower() == "n":
         return False
     elif text.lower() == "y":
@@ -405,7 +456,7 @@ def GetNotifChoice():
 
 def GetMemeChoice():
     global meme_mode
-    text = input(f"\n{strbold}Meme mode?{strreset} [Y/N]\n> ")
+    text = input(f"\n{strbold}{askcolour}Meme mode?{strreset} [Y/N]\n> ")
     if text.lower() == "n":
         return False
     elif text.lower() == "y":
@@ -414,7 +465,7 @@ def GetMemeChoice():
 
 def GetLoudChoice():
     global loud
-    text = input(f"\n{strbold}Loud mode?{strreset} [Y/N]\n> ")
+    text = input(f"\n{strbold}{askcolour}Loud mode?{strreset} [Y/N]\n> ")
     if text.lower() == "n":
         return False
     elif text.lower() == "y":
@@ -424,7 +475,7 @@ def GetLoudChoice():
 # download video if no arguments are given
 if arg_length < 2:
     logging.info("prepare download...")
-    url=input(f"\n{strbold}Paste a video link.{strreset}\n> ")
+    url=input(f"\n{strbold}{askcolour}Paste a video link.{strreset}\n> ")
     logging.info(f"input: \"{url}\"")
     if ask_size:   
         target_size = int(GetTargetSize())
@@ -452,16 +503,16 @@ if arg_length < 2:
     # easter egg
     if "dQw4w9WgXcQ" in url:
         webbrowser.open("https://youtu.be/dQw4w9WgXcQ")
-        print(f"\n{strpurple}{strbold}you rickroll me, i rickroll you{strreset}")
+        print(f"\n{othercolour}{strbold}you rickroll me, i rickroll you{strreset}")
 
-    print("\nFetching...")
+    print(f"\n{titlecolour}Fetching...{strreset}")
     titlecmd = "yt-dlp -e --no-playlist --no-warnings "+url
     logging.info("fetching title with the following command")
     logging.info(titlecmd)
     p = subprocess.getstatusoutput(titlecmd)
     if p[0] != 0:
         logging.info("title grab failed with return code "+str(p[0]))
-        print(f"{strred}There was an issue with your video URL.\nPress {strbold}[Enter]{strunbold} or close this window and run shrinkray again.")
+        print(f"{errorcolour}There was an issue with your video URL.\nPress {strbold}[Enter]{strunbold} or {strbold}close this window{strunbold} and run shrinkray again.")
         print(f"Be sure to check whether your URL is correct!{strreset}")
         logging.shutdown()
         if wait_when_done:
@@ -471,7 +522,7 @@ if arg_length < 2:
     url=url.replace("\"","'")
     title = title.replace("/","#")
     logging.info("title: "+str(title))
-    print(f"{strgreen}Found - {strbold}{strcyan}\"{title}\"{strreset}")
+    print(f"{strgreen}Found - {strbold}{othercolour}\"{title}\"{strreset}")
 
     # if using youtube, assume mp4 to save time
     if force_container and container == "mp4" and ("youtube.com" in url or "youtu.be" in url or "ytsearch:" in url):
@@ -494,7 +545,7 @@ if arg_length < 2:
         dlcommand = f"yt-dlp \"{url}\" -v --no-playlist {typearg}-o \"{filein}\""
     else:
         dlcommand = f"yt-dlp \"{url}\" --quiet --progress --no-playlist --no-warnings {typearg}-o \"{filein}\""
-    print("\nDownloading...")
+    print(f"\n{titlecolour}Downloading...{strreset}")
     logging.info("downloading with the following command")
     logging.info(dlcommand)
     os.system(dlcommand)
@@ -544,7 +595,7 @@ fileincontain = splitfilein[len(splitfilein)-1]
 filenocontain = filein[0:len(filein)-len(fileincontain)-1]
 if fileincontain != container and (force_container or audioonly):
     logging.info("converting file to "+container+" with the following command")
-    print(f"\n{strbold}Converting to {strcyan}{container}{strwhite}...{strreset}")
+    print(f"\n{strbold}{titlecolour}Converting to {othercolour}{container}{titlecolour}...{strreset}")
     if send_notifs:
         notif_convert.send()
     convertcommand = f"ffpb -y -i \"{filein}\"{preset} \"{filenocontain}.{container}\""
@@ -574,7 +625,7 @@ size=os.path.getsize(filein)/1000   # in kB
 logging.info(f"size of input file: {size}kB")
 if size < targetSizeKB and not meme_mode:
     if mute:
-        print(f"\n{strbold}Removing Audio...{strreset}")
+        print(f"\n{strbold}{titlecolour}Removing Audio...{strreset}")
         if send_notifs:
             notif_mute.send()
         mutecmd = f"ffpb -y -i \"{filein}\" -an \"{fileout}\""
@@ -582,7 +633,7 @@ if size < targetSizeKB and not meme_mode:
         logging.info(mutecmd)
         os.system(mutecmd)
     elif loud:
-        print(f"\n{strbold}Amplifying...{strreset}")
+        print(f"\n{strbold}{titlecolour}Amplifying...{strreset}")
         if send_notifs:
             notif_amplify.send()
         amplifycmd = f"ffpb -y -i \"{filein}\" {audiofilters}\"{fileout}\""
@@ -604,7 +655,7 @@ if size < targetSizeKB and not meme_mode:
     if newdisplaysize > expected:
         logging.info("somehow, shrinkray went backwards.")
         logging.info(f"expected {expected}kB, got {newdisplaysize}kB.")
-        print(f"\n{strbold}{strred}Congratulations, it seems like you have broken shrinkray.")
+        print(f"\n{strbold}{errorcolour}Congratulations, it seems like you have broken shrinkray.")
         print(f"Something happened that shouldn't be possible.")
         print(f"Please open a GitHub issue, providing log, so that I can fix this.{strreset}")
         printsizes(size, newdisplaysize)
@@ -695,7 +746,7 @@ if audioonly:
         ffmpegcmd = f"ffpb -y -hide_banner -i \"{filein}\" {audioargs}\"{fileout}\""
     if send_notifs:
         notif_audiocompress.send()
-    print(f"\n{strbold}Shrinking, this can take a while...{strreset}")
+    print(f"\n{strbold}{titlecolour}Shrinking, this can take a while...{strreset}")
     logging.info("audio shrinking using the following command")
     logging.info(ffmpegcmd)
     os.system(ffmpegcmd)
@@ -739,15 +790,15 @@ else:
             ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
             f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
 
-    print(f"\n{strbold}Shrinking using two-pass, this can take a while.{strreset}")
+    print(f"\n{strbold}{titlecolour}Shrinking using two-pass, this can take a while.{strreset}")
     logging.info("calling ffmpeg for two-pass, will now log commands")
     logging.info(ffmpeg_commands[0])
     if send_notifs:
         notif_twopass.send()
-    print(f"\n{strbold}Running {strpurple}pass 1{strwhite}...{strreset}")
+    print(f"\n{strbold}{titlecolour}Running {othercolour}pass 1{titlecolour}...{strreset}")
     os.system(ffmpeg_commands[0])
     logging.info(ffmpeg_commands[1])
-    print(f"\n{strbold}Running {strpurple}pass 2{strwhite}...{strreset}")
+    print(f"\n{strbold}{titlecolour}Running {othercolour}pass 2{titlecolour}...{strreset}")
     os.system(ffmpeg_commands[1])
     logging.info("called both commands")
 
@@ -761,7 +812,7 @@ if newdisplaysize == 0:
     logging.warning("failed!")
     if send_notifs:
         notif_failed.send()
-    print(f"\n{strred}{strbold}Shrinking failed! Try adjusting some settings.{strunbold}")
+    print(f"\n{strred}{strbold}Shrinking failed!{strunbold} Try adjusting some settings.")
     print(f"If you can't fix it, tell megabyte112 or open a GitHub issue.{strreset}")
 elif newdisplaysize > expected:
     logging.info("file is larger than expected!")
