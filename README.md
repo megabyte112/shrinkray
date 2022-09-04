@@ -26,4 +26,4 @@ This includes an audio-only mode where only the audio is encoded, and a "meme mo
 Drag the video onto the shrinkray file, and wait for the magic to happen.
 
 # Installation
- See installation instructions on the [Wiki](https://github.com/megabyte112/shrinkray/wiki/shrinkray-wiki).
+ See installation instructions on the [Wiki](https://github.com/megabyte112/shrinkray/wiki/Installation).
