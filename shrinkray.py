@@ -176,6 +176,10 @@ meme_mode = False
 # default: False
 loud = False
 
+# add text to the top and bottom of videos
+# default: False
+dotext = False
+
 # amplification.
 # only effective when loud is True.
 # default: 5
@@ -476,6 +480,15 @@ def GetLoudChoice():
         return True
     return loud
 
+def GetTextChoice():
+    global dotext
+    text = input(f"\n{strbold}{askcolour}Add text?{strreset} [Y/N]\n> ")
+    if text.lower() == "n":
+        return False
+    elif text.lower() == "y":
+        return True
+    return dotext
+
 # download video if no arguments are given
 if arg_length < 2:
     logging.info("prepare download...")
@@ -501,6 +514,15 @@ if arg_length < 2:
     if ask_loud:
         loud = GetLoudChoice()
     logging.info("loud: "+str(loud))
+    if ask_text and not audioonly:
+        dotext = GetTextChoice()
+    logging.info("text: "+str(dotext))
+
+    if dotext:
+        text1 = input("\n{strbold}{askcolour}Top text{strreset}\n> ")
+        logging.info("text1: "+text1)
+        text2 = input("\n{strbold}{askcolour}Bottom text{strreset}\n> ")
+        logging.info("text2: "+text2)
 
     clearscreen("Downloading...", strpurple)
         
