@@ -49,6 +49,10 @@ ask_meme = False
 # default: False
 ask_loud = False
 
+# ask the user to add text to videos each launch
+# default: False
+ask_text = False
+
 # default target file size in MB.
 # default: 8
 default_size = 8
@@ -623,7 +627,7 @@ logging.info("target size: "+str(targetSizeKB)+"KB")
 # calculate size: no need to shrink if file is already small enough
 size=os.path.getsize(filein)/1000   # in kB
 logging.info(f"size of input file: {size}kB")
-if size < targetSizeKB and not meme_mode:
+if size < target_size*1000 and not meme_mode:
     if mute:
         print(f"\n{strbold}{titlecolour}Removing Audio...{strreset}")
         if send_notifs:
