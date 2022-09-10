@@ -730,8 +730,12 @@ else:
 
 # ahh yes, crusty shitposts
 if meme_mode:
-    audiobitrate = 10
-    videobitrate = 20
+    if loud:
+        audiobitrate = 30
+        videobitrate = 20
+    else:
+        audiobitrate = 10
+        videobitrate = 20
     totalbitrate = audiobitrate + videobitrate
 
 logging.info(f"audio bitrate: {audiobitrate}kbps")
