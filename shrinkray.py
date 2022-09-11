@@ -25,33 +25,36 @@ suffix = "_shrinkray"
 bitrate_multiplier = 0.95
 
 # ask user whether audioonly shall be used each launch.
-# this is useless when audioonly is already True.
 # default: False
-ask_audio = False
+ask_audio = True
+
+# ask the user for mute preference each launch.
+# default: False
+ask_mute = True
 
 # ask user for target file size each launch.
 # default: False
-ask_size = False
+ask_size = True
 
 # ask the user for preferred speed each launch.
 # default: False
-ask_speed = False
+ask_speed = True
 
-# ask the user if notifications should be sent each launch.
+# ask the user for notification preference each launch.
 # default: False
-ask_notifs = False
+ask_notifs = True
 
-# ask the user for meme mode each launch.
+# ask the user for meme mode preference each launch.
 # default: False
-ask_meme = False
+ask_meme = True
 
-# ask the user for loud mode each launch.
+# ask the user for loud mode preference each launch.
 # default: False
-ask_loud = False
+ask_loud = True
 
-# ask the user to add text to videos each launch
+# ask the user for  text preference each launch.
 # default: False
-ask_text = False
+ask_text = True
 
 # default target file size in MB.
 # default: 8
@@ -176,9 +179,13 @@ meme_mode = False
 # default: False
 loud = False
 
-# add text to the top and bottom of videos
+# add text to the top and bottom of videos.
 # default: False
 dotext = False
+
+# height of text padding on each side when drawing text.
+# default: 100
+textheight = 100
 
 # amplification.
 # only effective when loud is True.
@@ -291,6 +298,13 @@ if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
 
 arg_length = len(sys.argv)
 
+if verbose:
+    executable = "ffmpeg"
+else:
+    executable = "ffpb"
+
+tempfiles = []
+
 # initialise text colouring for Windows hosts since it isn't natively supported,
 # this has no effect on other platforms.
 colorama.init()
@@ -361,10 +375,13 @@ notif_smallenough.title = "Complete!"
 notif_smallenough.message = "The file was already small enough."
 notif_amplify = notifypy.Notify()
 notif_amplify.title = "Amplifying"
-notif_amplify.message = "You'll be notified once complete."
+notif_amplify.message = "Turning up the volume."
 notif_mute = notifypy.Notify()
 notif_mute.title = "Removing Audio"
-notif_mute.message = "You'll be notified once complete."
+notif_mute.message = "Your video will be muted."
+notif_text = notifypy.Notify()
+notif_text.title = "Writing text"
+notif_text.message = "Text is being added to your video."
 
 clearscreen("Waiting for input...", stryellow)
 
@@ -436,7 +453,7 @@ def GetTargetSize():
 def GetSpeed():
     text = "0"
     while not CheckValidSpeedInput(text):
-        text = input(f"\n{strbold}{askcolour}Speed level [1-10]{strreset}\n> ")
+        text = input(f"\n{strbold}{askcolour}Speed level{strreset} [1-10]\n> ")
         if text == "":
             return speed
         if not CheckValidSpeedInput(text):
@@ -489,6 +506,26 @@ def GetTextChoice():
         return True
     return dotext
 
+def GetTextSize():
+    text = "0"
+    while not CheckValidInput(text):
+        text = input(f"\n{strbold}{askcolour}Text Size{strreset} \n> ")
+        if text == "":
+            return textheight
+        if not CheckValidInput(text):
+            logging.warning("rejected input: "+str(text))
+            print(f"\n{errorcolour}Make sure your input a whole number greater than 0{strreset}")
+    return text
+
+def GetMuteChoice():
+    global mute
+    text = input(f"\n{strbold}{askcolour}Mute audio?{strreset} [Y/N]\n> ")
+    if text.lower() == "n":
+        return False
+    elif text.lower() == "y":
+        return True
+    return mute
+
 # download video if no arguments are given
 if arg_length < 2:
     logging.info("prepare download...")
@@ -502,6 +539,9 @@ if arg_length < 2:
     if ask_audio:
         audioonly = GetAudioChoice()
     logging.info("audioonly: "+str(audioonly))
+    if ask_mute and not audioonly:
+        mute = GetMuteChoice()
+    logging.info("mute: "+str(mute))
     if ask_speed:
         speed = int(GetSpeed())
     logging.info("speed: "+str(speed))
@@ -519,9 +559,11 @@ if arg_length < 2:
     logging.info("text: "+str(dotext))
 
     if dotext:
-        text1 = input("\n{strbold}{askcolour}Top text{strreset}\n> ")
+        textheight = int(GetTextSize())
+        logging.info("text size:" +str(textheight))
+        text1 = input(f"\n{strbold}{askcolour}Top text{strreset}\n> ")
         logging.info("text1: "+text1)
-        text2 = input("\n{strbold}{askcolour}Bottom text{strreset}\n> ")
+        text2 = input(f"\n{strbold}{askcolour}Bottom text{strreset}\n> ")
         logging.info("text2: "+text2)
 
     clearscreen("Downloading...", strpurple)
@@ -587,6 +629,9 @@ else:
     if ask_audio:
         audioonly = GetAudioChoice()
     logging.info("audioonly: "+str(audioonly))
+    if ask_mute and not audioonly:
+        mute = GetMuteChoice()
+    logging.info("mute: "+str(mute))
     if ask_speed:
         speed = int(GetSpeed())
     logging.info("speed: "+str(speed))
@@ -599,6 +644,17 @@ else:
     if ask_loud:
         loud = GetLoudChoice()
     logging.info("loud: "+str(loud))
+    if ask_text and not audioonly:
+        dotext = GetTextChoice()
+    logging.info("text: "+str(dotext))
+
+    if dotext:
+        textheight = int(GetTextSize())
+        logging.info("text size:" +str(textheight))
+        text1 = input(f"\n{strbold}{askcolour}Top text{strreset}\n> ")
+        logging.info("text1: "+text1)
+        text2 = input(f"\n{strbold}{askcolour}Bottom text{strreset}\n> ")
+        logging.info("text2: "+text2)
 
 clearscreen("Running...", strblue)
 
@@ -606,6 +662,8 @@ clearscreen("Running...", strblue)
 speeds = ["placebo", "veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"]
 preset = " -preset "+speeds[speed-1]
 logging.info(f"preset: {speeds[speed-1]}")
+
+targetfilename = filein
 
 if audioonly:
     container = audiocontainer
@@ -624,24 +682,57 @@ if fileincontain != container and (force_container or audioonly):
     print(f"\n{strbold}{titlecolour}Converting to {othercolour}{container}{titlecolour}...{strreset}")
     if send_notifs:
         notif_convert.send()
-    convertcommand = f"ffpb -y -i \"{filein}\"{preset} \"{filenocontain}.{container}\""
+    convertcommand = f"ffpb -y -i \"{filein}\"{preset} \"convert.{container}\""
+    tempfiles.append("convert."+container)
     logging.info(convertcommand)
     os.system(convertcommand)
-    filein = filenocontain+"."+container
+    filein = "convert."+container
 
 # figure out valid file name
-fullname = filein.split("/")
+fullname = targetfilename.split("/")
 fullname = fullname[len(fullname)-1].split("\\")
 name = fullname[len(fullname)-1].split(".")
 if len(name) == 1:
     fileout = "output/"+name+suffix+"."+container
 else:
-    container = name[len(name)-1]
-    newname=""
-    for item in name:
-        if item != container:
-            newname += item
+    name.pop(len(name)-1)
+    newname = ""
+    for eachitem in name:
+        newname+=eachitem
     fileout = "output/"+newname+suffix+"."+container
+
+# add text if requested
+if dotext:
+    textcmd = f"{executable} -y -i \"{filein}\" -filter_complex \"[0:v]pad=iw:ih+{textheight*2}:0:(oh-ih)/2:color=white,drawtext=text='{text1}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=({textheight}-th)/2,drawtext=text='{text2}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=h-{math.floor(textheight/2)}-(th/2)\"{preset} \"text.{container}\""
+    tempfiles.append("text."+container)
+    logging.info("adding text with the following command:")
+    logging.info(textcmd)
+    print(f"\n{strbold}{titlecolour}Writing text...{strreset}")
+    if send_notifs:
+        notif_text.send()
+    os.system(textcmd)
+    filein = "text."+container
+
+if mute:
+    print(f"\n{strbold}{titlecolour}Removing Audio...{strreset}")
+    if send_notifs:
+        notif_mute.send()
+    mutecmd = f"{executable} -y -i \"{filein}\" -an \"mute.{container}\""
+    tempfiles.append("mute."+container)
+    logging.info("removing audio with the following command:")
+    logging.info(mutecmd)
+    os.system(mutecmd)
+    filein = "mute."+container
+elif loud:
+    print(f"\n{strbold}{titlecolour}Amplifying...{strreset}")
+    if send_notifs:
+        notif_amplify.send()
+    amplifycmd = f"{executable} -y -i \"{filein}\" {audiofilters}\"amplify.{container}\""
+    tempfiles.append("amplify."+container)
+    logging.info("amplifying with the following command:")
+    logging.info(amplifycmd)
+    os.system(amplifycmd)
+    filein = "amplify."+container
 
 targetSizeKB = int(target_size) * 1000 * bitrate_multiplier
 logging.info("target size: "+str(targetSizeKB)+"KB")
@@ -650,24 +741,10 @@ logging.info("target size: "+str(targetSizeKB)+"KB")
 size=os.path.getsize(filein)/1000   # in kB
 logging.info(f"size of input file: {size}kB")
 if size < target_size*1000 and not meme_mode:
-    if mute:
-        print(f"\n{strbold}{titlecolour}Removing Audio...{strreset}")
-        if send_notifs:
-            notif_mute.send()
-        mutecmd = f"ffpb -y -i \"{filein}\" -an \"{fileout}\""
-        logging.info("removing audio with the following command:")
-        logging.info(mutecmd)
-        os.system(mutecmd)
-    elif loud:
-        print(f"\n{strbold}{titlecolour}Amplifying...{strreset}")
-        if send_notifs:
-            notif_amplify.send()
-        amplifycmd = f"ffpb -y -i \"{filein}\" {audiofilters}\"{fileout}\""
-        logging.info("amplifying with the following command:")
-        logging.info(amplifycmd)
-        os.system(amplifycmd)
-    else:
-        shutil.copy(filein, fileout)
+    shutil.copy(filein, fileout)
+
+    for eachfile in tempfiles:
+        os.remove(eachfile)
 
     clearscreen("Complete!", strgreen)
 
@@ -770,10 +847,7 @@ logging.info(f"total bitrate: {totalbitrate}kbps")
 
 if audioonly:
     audioargs = f"-c:a {audio_codec} -b:a {audiobitrate}k {audiofilters}"
-    if verbose:
-        ffmpegcmd = f"ffmpeg -y -i \"{filein}\" {audioargs}\"{fileout}\""
-    else:
-        ffmpegcmd = f"ffpb -y -hide_banner -i \"{filein}\" {audioargs}\"{fileout}\""
+    ffmpegcmd = f"{executable} -y -hide_banner -i \"{filein}\" {audioargs}\"{fileout}\""
     if send_notifs:
         notif_audiocompress.send()
     print(f"\n{strbold}{titlecolour}Shrinking, this can take a while...{strreset}")
@@ -782,7 +856,7 @@ if audioonly:
     os.system(ffmpegcmd)
     logging.info("called command")
 else:
-    audioargs = f"-b:a {audiobitrate}k {audiofilters}"
+    audioargs = f"-b:a {audiobitrate}k "
     if mute:
         audioargs = "-an "
     if not force_container:
@@ -801,24 +875,16 @@ else:
         videoargs = f"-vf scale={newres}{fpsargs}-c:v {video_codec} -b:v {videobitrate}k"
         if audioonly:
             videoargs = ""
-        if verbose:
-            ffmpeg_commands = [f"ffmpeg -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-            f"ffmpeg -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
-        else:
-            ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
+        ffmpeg_commands = [f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
+        f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
     else:
         if lowerfps:
             fpsargs = "-vf fps="+str(target_fps)+" "
         else:
             fpsargs = ""
         videoargs = f"{fpsargs}-c:v {video_codec} -b:v {videobitrate}k"
-        if verbose:
-            ffmpeg_commands = [f"ffmpeg -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-            f"ffmpeg -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
-        else:
-            ffmpeg_commands = [f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-            f"ffpb -y -hide_banner -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
+        ffmpeg_commands = [f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
+        f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
 
     print(f"\n{strbold}{titlecolour}Shrinking using two-pass, this can take a while.{strreset}")
     logging.info("calling ffmpeg for two-pass, will now log commands")
@@ -833,6 +899,8 @@ else:
     logging.info("called both commands")
 
 # done!
+for eachfile in tempfiles:
+    os.remove(eachfile)
 clearscreen("Complete!", strgreen)
 newdisplaysize=round(os.path.getsize(fileout)/1000) # in kB
 newkibisize=kibiconvert(newdisplaysize)
