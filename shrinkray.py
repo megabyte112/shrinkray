@@ -183,9 +183,10 @@ loud = False
 # default: False
 dotext = False
 
-# height of text padding on each side when drawing text.
-# default: 100
-textheight = 100
+# how many times smaller than the width is the text padding.
+# higher is smaller.
+# default: 10
+text_devisor = 10
 
 # amplification.
 # only effective when loud is True.
@@ -506,17 +507,6 @@ def GetTextChoice():
         return True
     return dotext
 
-def GetTextSize():
-    text = "0"
-    while not CheckValidInput(text):
-        text = input(f"\n{strbold}{askcolour}Text Size{strreset} \n> ")
-        if text == "":
-            return textheight
-        if not CheckValidInput(text):
-            logging.warning("rejected input: "+str(text))
-            print(f"\n{errorcolour}Make sure your input a whole number greater than 0{strreset}")
-    return text
-
 def GetMuteChoice():
     global mute
     text = input(f"\n{strbold}{askcolour}Mute audio?{strreset} [Y/N]\n> ")
@@ -559,8 +549,6 @@ if arg_length < 2:
     logging.info("text: "+str(dotext))
 
     if dotext:
-        textheight = int(GetTextSize())
-        logging.info("text size:" +str(textheight))
         text1 = input(f"\n{strbold}{askcolour}Top text{strreset}\n> ")
         logging.info("text1: "+text1)
         text2 = input(f"\n{strbold}{askcolour}Bottom text{strreset}\n> ")
@@ -649,8 +637,6 @@ else:
     logging.info("text: "+str(dotext))
 
     if dotext:
-        textheight = int(GetTextSize())
-        logging.info("text size:" +str(textheight))
         text1 = input(f"\n{strbold}{askcolour}Top text{strreset}\n> ")
         logging.info("text1: "+text1)
         text2 = input(f"\n{strbold}{askcolour}Bottom text{strreset}\n> ")
@@ -701,8 +687,36 @@ else:
         newname+=eachitem
     fileout = "output/"+newname+suffix+"."+container
 
+# get resolution
+doScale = False
+if not audioonly:
+    if meme_mode:
+        max_res_size = 640
+    rescmd = f"ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 \"{filein}\""
+    logging.info("fetching resolution with the following command")
+    logging.info(rescmd)
+    fullresolution = subprocess.getoutput(rescmd)
+    logging.info("video is "+fullresolution)
+    splitres = fullresolution.split("x")
+    width = int(splitres[0])
+    height = int(splitres[1])
+    if width > height:
+        orientation = 'l'
+        logging.info("video is landscape")
+    else:
+        orientation = 'p'
+        logging.info("video is portrait")
+    if width > max_res_size or height > max_res_size:
+        doScale = True
+        logging.info("scaling will be needed")
+
 # add text if requested
 if dotext:
+    text1 = text1.replace("\"","\\\"")
+    text1 = text1.replace("'","\\\'")
+    text2 = text2.replace("\"","\\\"")
+    text2 = text2.replace("'","\\\'")
+    textheight = math.floor(width / text_devisor)
     textcmd = f"{executable} -y -i \"{filein}\" -filter_complex \"[0:v]pad=iw:ih+{textheight*2}:0:(oh-ih)/2:color=white,drawtext=text='{text1}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=({textheight}-th)/2,drawtext=text='{text2}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=h-{math.floor(textheight/2)}-(th/2)\"{preset} \"text.{container}\""
     tempfiles.append("text."+container)
     logging.info("adding text with the following command:")
@@ -794,29 +808,6 @@ if not audioonly:
     fps = float(int(fullfps[0])/int(fullfps[1]))
     logging.info(f"video is {fps}fps")
     lowerfps = fps > target_fps
-
-# get resolution
-doScale = False
-if not audioonly:
-    if meme_mode:
-        max_res_size = 640
-    rescmd = f"ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 \"{filein}\""
-    logging.info("fetching resolution with the following command")
-    logging.info(rescmd)
-    fullresolution = subprocess.getoutput(rescmd)
-    logging.info("video is "+fullresolution)
-    splitres = fullresolution.split("x")
-    width = int(splitres[0])
-    height = int(splitres[1])
-    if width > height:
-        orientation = 'l'
-        logging.info("video is landscape")
-    else:
-        orientation = 'p'
-        logging.info("video is portrait")
-    if width > max_res_size or height > max_res_size:
-        doScale = True
-        logging.info("scaling will be needed")
 
 # split into audio and video
 if audioonly:
