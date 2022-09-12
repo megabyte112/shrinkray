@@ -26,35 +26,35 @@ bitrate_multiplier = 0.95
 
 # ask user whether audioonly shall be used each launch.
 # default: False
-ask_audio = True
+ask_audio = False
 
 # ask the user for mute preference each launch.
 # default: False
-ask_mute = True
+ask_mute = False
 
 # ask user for target file size each launch.
 # default: False
-ask_size = True
+ask_size = False
 
 # ask the user for preferred speed each launch.
 # default: False
-ask_speed = True
+ask_speed = False
 
 # ask the user for notification preference each launch.
 # default: False
-ask_notifs = True
+ask_notifs = False
 
 # ask the user for meme mode preference each launch.
 # default: False
-ask_meme = True
+ask_meme = False
 
 # ask the user for loud mode preference each launch.
 # default: False
-ask_loud = True
+ask_loud = False
 
-# ask the user for  text preference each launch.
+# ask the user for text preference each launch.
 # default: False
-ask_text = True
+ask_text = False
 
 # default target file size in MB.
 # default: 8
@@ -668,11 +668,11 @@ if fileincontain != container and (force_container or audioonly):
     print(f"\n{strbold}{titlecolour}Converting to {othercolour}{container}{titlecolour}...{strreset}")
     if send_notifs:
         notif_convert.send()
-    convertcommand = f"ffpb -y -i \"{filein}\"{preset} \"convert.{container}\""
-    tempfiles.append("convert."+container)
+    convertcommand = f"ffpb -y -i \"{filein}\"{preset} \"converted.{container}\""
+    tempfiles.append("converted."+container)
     logging.info(convertcommand)
     os.system(convertcommand)
-    filein = "convert."+container
+    filein = "converted."+container
 
 # figure out valid file name
 fullname = targetfilename.split("/")
@@ -731,12 +731,12 @@ if mute:
     print(f"\n{strbold}{titlecolour}Removing Audio...{strreset}")
     if send_notifs:
         notif_mute.send()
-    mutecmd = f"{executable} -y -i \"{filein}\" -an \"mute.{container}\""
-    tempfiles.append("mute."+container)
+    mutecmd = f"{executable} -y -i \"{filein}\" -an \"muted.{container}\""
+    tempfiles.append("muted."+container)
     logging.info("removing audio with the following command:")
     logging.info(mutecmd)
     os.system(mutecmd)
-    filein = "mute."+container
+    filein = "muted."+container
 elif loud:
     print(f"\n{strbold}{titlecolour}Amplifying...{strreset}")
     if send_notifs:
