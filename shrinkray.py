@@ -243,7 +243,7 @@ if not os.path.isdir("download"):
     os.mkdir("download")
 
 # don't edit
-version = "1.5"
+version = "1.6"
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
