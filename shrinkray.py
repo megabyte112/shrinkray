@@ -717,15 +717,15 @@ if dotext:
     text2 = text2.replace("\"","\\\"")
     text2 = text2.replace("'","\\\'")
     textheight = math.floor(width / text_devisor)
-    textcmd = f"{executable} -y -i \"{filein}\" -filter_complex \"[0:v]pad=iw:ih+{textheight*2}:0:(oh-ih)/2:color=white,drawtext=text='{text1}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=({textheight}-th)/2,drawtext=text='{text2}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=h-{math.floor(textheight/2)}-(th/2)\"{preset} \"text.{container}\""
-    tempfiles.append("text."+container)
+    textcmd = f"{executable} -y -i \"{filein}\" -filter_complex \"[0:v]pad=iw:ih+{textheight*2}:0:(oh-ih)/2:color=white,drawtext=text='{text1}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=({textheight}-th)/2,drawtext=text='{text2}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=h-{math.floor(textheight/2)}-(th/2)\"{preset} \"written.{container}\""
+    tempfiles.append("written."+container)
     logging.info("adding text with the following command:")
     logging.info(textcmd)
     print(f"\n{strbold}{titlecolour}Writing text...{strreset}")
     if send_notifs:
         notif_text.send()
     os.system(textcmd)
-    filein = "text."+container
+    filein = "written."+container
 
 if mute:
     print(f"\n{strbold}{titlecolour}Removing Audio...{strreset}")
@@ -741,12 +741,12 @@ elif loud:
     print(f"\n{strbold}{titlecolour}Amplifying...{strreset}")
     if send_notifs:
         notif_amplify.send()
-    amplifycmd = f"{executable} -y -i \"{filein}\" {audiofilters}\"amplify.{container}\""
-    tempfiles.append("amplify."+container)
+    amplifycmd = f"{executable} -y -i \"{filein}\" {audiofilters}\"amplified.{container}\""
+    tempfiles.append("amplified."+container)
     logging.info("amplifying with the following command:")
     logging.info(amplifycmd)
     os.system(amplifycmd)
-    filein = "amplify."+container
+    filein = "amplified."+container
 
 targetSizeKB = int(target_size) * 1000 * bitrate_multiplier
 logging.info("target size: "+str(targetSizeKB)+"KB")
