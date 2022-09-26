@@ -79,6 +79,12 @@ open_when_done = True
 # default: True
 send_notifs = True
 
+# amount of allowed items in any of shrinkray's folders before showing a warning.
+# these folders, especially 'download', can reach very large file sizes.
+# set to None to disable.
+# default: 100
+warning_threshhold = 100
+
 ## -----[Video]----- ##
 
 # maximum allowed size of longest edge (in pixels) before scaling is needed.
@@ -243,7 +249,7 @@ if not os.path.isdir("download"):
     os.mkdir("download")
 
 # don't edit
-version = "1.6"
+version = "1.6.1"
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
@@ -279,7 +285,15 @@ except ImportError:
     logging.info("installing deps")
     print("\nInstalling dependencies, you may see some warnings.\n")
     import pip
-    pip.main(["install","--quiet","ffpb","yt-dlp","notify-py","show-in-file-manager","colorama","--exists-action","i"])
+    pip.main(["install","--quiet",
+
+    "ffpb",
+    "yt-dlp",
+    "notify-py",
+    "show-in-file-manager",
+    "colorama",
+    
+    "--exists-action","i"])
     import ffpb, yt_dlp, notifypy, showinfm, colorama
     earlyclearscreen()
     print("\nDependencies have been installed,\nPlease restart shrinkray.")
@@ -384,11 +398,26 @@ notif_text = notifypy.Notify()
 notif_text.title = "Writing text"
 notif_text.message = "Text is being added to your video."
 
+logging.info("counting files")
+
+# count the number of files in each folder
+def countfiles(path):
+    return len(os.listdir(path))
+
+log_count = countfiles("logs")
+logging.info(f"logs: {log_count}")
+
+dl_count = countfiles("download")
+logging.info(f"download: {dl_count}")
+
+out_count = countfiles("output")
+logging.info(f"output: {out_count}")
+
 clearscreen("Waiting for input...", stryellow)
 
 logging.info("args: " + str(sys.argv))
-logging.info("mute: "+str(mute))
 logging.info("audioratio: "+str(audioratio))
+logging.info("wait: "+str(wait_when_done))
 logging.info("bitrate_multiplier: "+str(bitrate_multiplier))
 
 logging.info("initialization complete")
@@ -399,17 +428,37 @@ print(f"\n{titlecolour}Welcome back to {strbold}shrinkray{strreset}.")
 logging.info(f"shrinkray {version} is running")
 logging.info("tell megabyte112 about any issues :)")
 
-if meme_mode:
+if meme_mode and not ask_meme:
     ask_size = False
     print(f"\n{strbold}{errorcolour}haha shitpost shrinkray go brrrrrrrrr")
     print(f"(meme mode is active){strreset}")
-if audioonly:
+if audioonly and not ask_audio:
     print(f"\n{strbold}{errorcolour}WARNING: Output will be audio only!{strreset}")
-elif mute:
+elif mute and not ask_mute:
     print(f"\n{strbold}{errorcolour}WARNING: Video will be muted!{strreset}")
-if loud and not mute:
+if loud and not ask_loud and not mute:
     print(f"\n{strbold}{errorcolour}i hope your ears are okay")
     print(f"(loud mode enabled){strreset}")
+
+if warning_threshhold is not None:
+    sizewarned = False
+    if log_count >= warning_threshhold:
+        sizewarned = True
+        print(f"\n{strbold}{errorcolour}WARNING: Logs folder contains {log_count} items!")
+        print(f"Consider clearing it once shrinkray is closed.{strreset}")
+    elif dl_count >= warning_threshhold:
+        sizewarned = True
+        print(f"\n{strbold}{errorcolour}WARNING: Download folder contains {dl_count} items!")
+        print("This folder can take up a lot of unnecessary space.")
+        print(f"Consider clearing it once shrinkray is closed.{strreset}")
+    elif out_count >= warning_threshhold:
+        sizewarned = True
+        print(f"\n{strbold}{errorcolour}WARNING: Output folder contains {out_count} items!")
+        print(f"Consider clearing it once shrinkray is closed.{strreset}")
+    
+    if sizewarned:
+        print(f"{strbold}{errorcolour}You can disable this warning in the settings.{strreset}")
+
 
 def kibiconvert(value):
     return value*0.9765625
@@ -668,11 +717,12 @@ if fileincontain != container and (force_container or audioonly):
     print(f"\n{strbold}{titlecolour}Converting to {othercolour}{container}{titlecolour}...{strreset}")
     if send_notifs:
         notif_convert.send()
-    convertcommand = f"ffpb -y -i \"{filein}\"{preset} \"converted.{container}\""
-    tempfiles.append("converted."+container)
+    convert_filename = f"logs/conv_{launchtime}.{container}"
+    convertcommand = f"ffpb -y -i \"{filein}\"{preset} \"{convert_filename}\""
+    tempfiles.append(convert_filename)
     logging.info(convertcommand)
     os.system(convertcommand)
-    filein = "converted."+container
+    filein = convert_filename
 
 # figure out valid file name
 fullname = targetfilename.split("/")
@@ -717,36 +767,39 @@ if dotext:
     text2 = text2.replace("\"","\\\"")
     text2 = text2.replace("'","\\\'")
     textheight = math.floor(width / text_devisor)
-    textcmd = f"{executable} -y -i \"{filein}\" -filter_complex \"[0:v]pad=iw:ih+{textheight*2}:0:(oh-ih)/2:color=white,drawtext=text='{text1}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=({textheight}-th)/2,drawtext=text='{text2}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=h-{math.floor(textheight/2)}-(th/2)\"{preset} \"written.{container}\""
-    tempfiles.append("written."+container)
+    text_filename = f"logs/txt_{launchtime}.{container}"
+    textcmd = f"{executable} -y -i \"{filein}\" -filter_complex \"[0:v]pad=iw:ih+{textheight*2}:0:(oh-ih)/2:color=white,drawtext=text='{text1}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=({textheight}-th)/2,drawtext=text='{text2}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=h-{math.floor(textheight/2)}-(th/2)\"{preset} \"{text_filename}\""
+    tempfiles.append(text_filename)
     logging.info("adding text with the following command:")
     logging.info(textcmd)
     print(f"\n{strbold}{titlecolour}Writing text...{strreset}")
     if send_notifs:
         notif_text.send()
     os.system(textcmd)
-    filein = "written."+container
+    filein = text_filename
 
 if mute:
     print(f"\n{strbold}{titlecolour}Removing Audio...{strreset}")
     if send_notifs:
         notif_mute.send()
-    mutecmd = f"{executable} -y -i \"{filein}\" -an \"muted.{container}\""
-    tempfiles.append("muted."+container)
+    mute_filename = f"logs/mute_{launchtime}.{container}"
+    mutecmd = f"{executable} -y -i \"{filein}\" -an \"{mute_filename}\""
+    tempfiles.append(mute_filename)
     logging.info("removing audio with the following command:")
     logging.info(mutecmd)
     os.system(mutecmd)
-    filein = "muted."+container
+    filein = mute_filename
 elif loud:
     print(f"\n{strbold}{titlecolour}Amplifying...{strreset}")
     if send_notifs:
         notif_amplify.send()
-    amplifycmd = f"{executable} -y -i \"{filein}\" {audiofilters}\"amplified.{container}\""
-    tempfiles.append("amplified."+container)
+    amp_filename = f"amp_{launchtime}.{container}"
+    amplifycmd = f"{executable} -y -i \"{filein}\" {audiofilters}\"{amp_filename}\""
+    tempfiles.append(amp_filename)
     logging.info("amplifying with the following command:")
     logging.info(amplifycmd)
     os.system(amplifycmd)
-    filein = "amplified."+container
+    filein = amp_filename
 
 targetSizeKB = int(target_size) * 1000 * bitrate_multiplier
 logging.info("target size: "+str(targetSizeKB)+"KB")
@@ -892,12 +945,15 @@ else:
 # done!
 for eachfile in tempfiles:
     os.remove(eachfile)
+
 clearscreen("Complete!", strgreen)
 newdisplaysize=round(os.path.getsize(fileout)/1000) # in kB
 newkibisize=kibiconvert(newdisplaysize)
 logging.info(f"size of output file: {newdisplaysize}kB, or {newkibisize}kiB")
 expected = target_size*1024
+failed = False
 if newdisplaysize == 0:
+    failed = True
     logging.warning("failed!")
     if send_notifs:
         notif_failed.send()
@@ -918,7 +974,7 @@ else:
     print(f"\n{strbold}{strgreen}Shrinking complete!\nCheck the output folder for your file.{strreset}")
     printsizes(size, newdisplaysize)
 logging.shutdown()
-if open_when_done:
+if open_when_done and not failed:
     showinfm.show_in_file_manager(fileout)
 if wait_when_done:
     input(f"You can now press {strbold}[Enter]{strunbold} or {strbold}close this window{strunbold} to exit.")
