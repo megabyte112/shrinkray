@@ -24,41 +24,49 @@ suffix = "_shrinkray"
 # default: 0.95
 bitrate_multiplier = 0.95
 
+# ask user whether the media shall be trimmed each launch.
+# default: True
+ask_trim = True
+
 # ask user whether audioonly shall be used each launch.
-# default: False
-ask_audio = False
+# default: True
+ask_audio = True
 
 # ask the user for mute preference each launch.
-# default: False
-ask_mute = False
+# default: True
+ask_mute = True
 
 # ask user for target file size each launch.
-# default: False
-ask_size = False
+# default: True
+ask_size = True
 
 # ask the user for preferred speed each launch.
-# default: False
-ask_speed = False
+# default: True
+ask_speed = True
 
 # ask the user for notification preference each launch.
-# default: False
-ask_notifs = False
+# default: True
+ask_notifs = True
 
 # ask the user for meme mode preference each launch.
-# default: False
-ask_meme = False
+# default: True
+ask_meme = True
 
 # ask the user for loud mode preference each launch.
-# default: False
-ask_loud = False
+# default: True
+ask_loud = True
 
 # ask the user for text preference each launch.
-# default: False
-ask_text = False
+# default: True
+ask_text = True
 
 # default target file size in MB.
 # default: 8
 default_size = 8
+
+# trims the video between two timestamps.
+# default: False
+trim = False
 
 # shrinking speed, a number between 1 and 10, higher is faster.
 # lower speeds lead to more accurate file sizes.
@@ -367,36 +375,51 @@ def clearscreen(stage, color):
 
 # configure notifs
 logging.info("configuring notifs")
+
 notif_convert = notifypy.Notify()
 notif_convert.title = "Converting"
 notif_convert.message = "Media is being converted to another format."
+
 notif_audiocompress = notifypy.Notify()
 notif_audiocompress.title = "Shrinking Audio"
 notif_audiocompress.message = "You'll be notified once compression is complete."
+
 notif_twopass = notifypy.Notify()
 notif_twopass.title = "Shrinking Video"
 notif_twopass.message = "You'll be notified once compression is complete."
+
 notif_complete = notifypy.Notify()
 notif_complete.title = "Shrinking Complete!"
 notif_complete.message = "Your video was compressed successfully."
+
 notif_failed = notifypy.Notify()
 notif_failed.title = "Shrinking Failed!"
 notif_failed.message = "Your video couldn't be compressed properly."
+
 notif_toobig = notifypy.Notify()
 notif_toobig.title = "Shrinking Complete!"
 notif_toobig.message = "The resulting file is larger than you requested."
+
 notif_smallenough = notifypy.Notify()
 notif_smallenough.title = "Complete!"
 notif_smallenough.message = "The file was already small enough."
+
 notif_amplify = notifypy.Notify()
 notif_amplify.title = "Amplifying"
 notif_amplify.message = "Turning up the volume."
+
 notif_mute = notifypy.Notify()
 notif_mute.title = "Removing Audio"
 notif_mute.message = "Your video will be muted."
+
 notif_text = notifypy.Notify()
 notif_text.title = "Writing text"
 notif_text.message = "Text is being added to your video."
+
+notif_trim = notifypy.Notify()
+notif_trim.title = "Trimming"
+notif_trim.message = "Your file is being trimmed to your specified time."
+
 
 logging.info("counting files")
 
@@ -413,6 +436,7 @@ logging.info(f"download: {dl_count}")
 out_count = countfiles("output")
 logging.info(f"output: {out_count}")
 
+
 clearscreen("Waiting for input...", stryellow)
 
 logging.info("args: " + str(sys.argv))
@@ -421,6 +445,7 @@ logging.info("wait: "+str(wait_when_done))
 logging.info("bitrate_multiplier: "+str(bitrate_multiplier))
 
 logging.info("initialization complete")
+
 
 # we're running!!
 print(f"\n{titlecolour}Welcome back to {strbold}shrinkray{strreset}.")
@@ -511,6 +536,15 @@ def GetSpeed():
             print(f"\n{errorcolour}Make sure your input a whole number between 1 and 10{strreset}")
     return text
 
+def GetTrimChoice():
+    global trim
+    text = input(f"\n{strbold}{askcolour}Trim video?{strreset} [Y/N]\n> ")
+    if text.lower() == "n":
+        return False
+    elif text.lower() == "y":
+        return True
+    return trim
+
 def GetAudioChoice():
     global audioonly
     text = input(f"\n{strbold}{askcolour}Get audio only?{strreset} [Y/N]\n> ")
@@ -575,6 +609,13 @@ if arg_length < 2:
     else:
         target_size = default_size
     logging.info("target (in MB): "+str(target_size))
+    if ask_trim:
+        trim = GetTrimChoice()
+    logging.info("trim: "+str(trim))
+    if trim:
+        start_time = input(f"\n{strbold}{askcolour}Start time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
+        end_time = input(f"\n{strbold}{askcolour}End time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
+        logging.info(f"time range between {start_time} and {end_time}")
     if ask_audio:
         audioonly = GetAudioChoice()
     logging.info("audioonly: "+str(audioonly))
@@ -663,6 +704,13 @@ else:
     else:
         target_size = default_size
     logging.info("target (in MB): "+str(target_size))
+    if ask_trim:
+        trim = GetTrimChoice()
+    logging.info("trim: "+str(trim))
+    if trim:
+        start_time = input(f"\n{strbold}{askcolour}Start time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
+        end_time = input(f"\n{strbold}{askcolour}End time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
+        logging.info(f"time range between {start_time} and {end_time}")
     if ask_audio:
         audioonly = GetAudioChoice()
     logging.info("audioonly: "+str(audioonly))
@@ -691,6 +739,7 @@ else:
         text2 = input(f"\n{strbold}{askcolour}Bottom text{strreset}\n> ")
         logging.info("text2: "+text2)
 
+
 clearscreen("Running...", strblue)
 
 # determine ffmpeg preset based on speed
@@ -718,11 +767,25 @@ if fileincontain != container and (force_container or audioonly):
     if send_notifs:
         notif_convert.send()
     convert_filename = f"logs/conv_{launchtime}.{container}"
-    convertcommand = f"ffpb -y -i \"{filein}\"{preset} \"{convert_filename}\""
+    convertcommand = f"{executable} -y -i \"{filein}\"{preset} \"{convert_filename}\""
     tempfiles.append(convert_filename)
     logging.info(convertcommand)
     os.system(convertcommand)
     filein = convert_filename
+
+# trim
+if trim:
+    if send_notifs:
+        notif_trim.send()
+    print(f"\n{strbold}{titlecolour}Trimming between {othercolour}{start_time}{titlecolour} and {othercolour}{end_time}{titlecolour}...{strreset}")
+    print(f"{othercolour}(the progress bar may not fully complete){strreset}")
+    trim_filename = f"logs/trim_{launchtime}.{container}"
+    trimcommand = f"{executable} -y -i \"{filein}\" -ss {start_time} -to {end_time} \"{trim_filename}\""
+    tempfiles.append(trim_filename)
+    logging.info("trimming with the following command")
+    logging.info(trimcommand)
+    os.system(trimcommand)
+    filein = trim_filename
 
 # figure out valid file name
 fullname = targetfilename.split("/")
