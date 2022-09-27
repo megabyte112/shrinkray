@@ -1,6 +1,6 @@
 # shrinkray, by megabyte112
-# see LICENSE for license info
 # https://github.com/megabyte112/shrinkray
+# see LICENSE for license info
 
 
 ### ----------[~~Settings~~]---------- ###
@@ -24,6 +24,10 @@ suffix = "_shrinkray"
 # default: 0.95
 bitrate_multiplier = 0.95
 
+# ask user for target file size each launch.
+# default: True
+ask_size = True
+
 # ask user whether the media shall be trimmed each launch.
 # default: True
 ask_trim = True
@@ -33,36 +37,32 @@ ask_trim = True
 ask_audio = True
 
 # ask the user for mute preference each launch.
-# default: True
-ask_mute = True
-
-# ask user for target file size each launch.
-# default: True
-ask_size = True
+# default: False
+ask_mute = False
 
 # ask the user for preferred speed each launch.
-# default: True
-ask_speed = True
+# default: False
+ask_speed = False
 
 # ask the user for notification preference each launch.
 # default: True
 ask_notifs = True
 
 # ask the user for meme mode preference each launch.
-# default: True
-ask_meme = True
+# default: False
+ask_meme = False
 
 # ask the user for loud mode preference each launch.
-# default: True
-ask_loud = True
+# default: False
+ask_loud = False
 
 # ask the user for text preference each launch.
-# default: True
-ask_text = True
+# default: False
+ask_text = False
 
-# default target file size in MB.
-# default: 8
-default_size = 8
+# default target file size in kB.
+# default: 8000
+default_size = 8000
 
 # trims the video between two timestamps.
 # default: False
@@ -149,6 +149,11 @@ audiocontainer = "mp3"
 # default: "libmp3lame"
 audio_codec = "libmp3lame"
 
+# if you want some good quality audio with a small
+# file size you can try setting the audio container to "opus" and
+# setting the audio codec to "libopus", however opus is
+# not compatible with many programs at this time.
+
 ## ----[Colours]---- ##
 # or 'colors', whatever.
 
@@ -171,11 +176,11 @@ warningcol = "red"
 # default: "magenta"
 othercol = "magenta"
 
-# file size numbers once completed
+# file size numbers once completed.
 # default: "cyan"
 numbercol = "cyan"
 
-# file size units once completed
+# file size units once completed.
 # default: "yellow"
 unitcol = "yellow"
 
@@ -225,10 +230,10 @@ crunchiness = 64
 
 preferred_vcodecs = {
     "mp4":"libx264",
-    "mkv":"libx264",
     "mov":"libx264",
     "webm":"libvpx-vp9",
-    "avi":"libvpx-vp9"
+    "avi":"libvpx-vp9",
+    "opus":"libopus"
 }
 
 ### -------[~~End of Settings~~]------- ###
@@ -257,7 +262,7 @@ if not os.path.isdir("download"):
     os.mkdir("download")
 
 # don't edit
-version = "1.6.1"
+version = "1.6.2"
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
@@ -369,7 +374,9 @@ unitcolour = getcolfromtext(unitcol)
 
 # define clear function
 def clearscreen(stage, color):
-    global clearcmd, version
+    global clearcmd, version, verbose
+    if verbose:
+        return
     os.system(clearcmd)
     print(f"{strbold}shrinkray {version} | {color}{stage}{strreset}\n")
 
@@ -469,20 +476,20 @@ if warning_threshhold is not None:
     sizewarned = False
     if log_count >= warning_threshhold:
         sizewarned = True
-        print(f"\n{strbold}{errorcolour}WARNING: Logs folder contains {log_count} items!")
+        print(f"\n{errorcolour}Logs folder contains {log_count} items!")
         print(f"Consider clearing it once shrinkray is closed.{strreset}")
-    elif dl_count >= warning_threshhold:
+    if dl_count >= warning_threshhold:
         sizewarned = True
-        print(f"\n{strbold}{errorcolour}WARNING: Download folder contains {dl_count} items!")
-        print("This folder can take up a lot of unnecessary space.")
+        print(f"\n{errorcolour}Download folder contains {dl_count} items!")
+        print(f"{strbold}This folder can take up a lot of unnecessary space.{strunbold}")
         print(f"Consider clearing it once shrinkray is closed.{strreset}")
-    elif out_count >= warning_threshhold:
+    if out_count >= warning_threshhold:
         sizewarned = True
-        print(f"\n{strbold}{errorcolour}WARNING: Output folder contains {out_count} items!")
+        print(f"\n{errorcolour}Output folder contains {out_count} items!")
         print(f"Consider clearing it once shrinkray is closed.{strreset}")
     
     if sizewarned:
-        print(f"{strbold}{errorcolour}You can disable this warning in the settings.{strreset}")
+        print(f"\n{errorcolour}You can disable these folder warnings in the settings.{strreset}")
 
 
 def kibiconvert(value):
@@ -507,6 +514,8 @@ def printsizes(size1, size2):
 
 # text must be a number greater than 0
 def CheckValidInput(text):
+    if 'k' in text:
+        text = text[0:len(text)-1]
     return text.isnumeric() and int(text) > 0
 
 def CheckValidSpeedInput(text):
@@ -516,13 +525,15 @@ def CheckValidSpeedInput(text):
 def GetTargetSize():
     text = "0"
     while not CheckValidInput(text):
-        text = input(f"\n{strbold}{askcolour}Target file size in MB{strreset}\n> ")
+        text = input(f"\n{strbold}{askcolour}Target file size in MB {strreset}[add k for kB]\n> ")
         if text == "":
             return default_size
         if not CheckValidInput(text):
             logging.warning("rejected input: "+str(text))
             print(f"\n{errorcolour}Make sure your input a whole number greater than 0!{strreset}")
-    return text
+        if 'k' in text:
+            return text[0:len(text)-1]
+    return text + "000"
 
 # ask for speed
 def GetSpeed():
@@ -608,7 +619,7 @@ if arg_length < 2:
         target_size = int(GetTargetSize())
     else:
         target_size = default_size
-    logging.info("target (in MB): "+str(target_size))
+    logging.info("target (in kB): "+str(target_size))
     if ask_trim:
         trim = GetTrimChoice()
     logging.info("trim: "+str(trim))
@@ -636,6 +647,8 @@ if arg_length < 2:
     logging.info("loud: "+str(loud))
     if ask_text and not audioonly:
         dotext = GetTextChoice()
+    elif audioonly:
+        dotext = False
     logging.info("text: "+str(dotext))
 
     if dotext:
@@ -645,11 +658,6 @@ if arg_length < 2:
         logging.info("text2: "+text2)
 
     clearscreen("Downloading...", strpurple)
-        
-    # easter egg
-    if "dQw4w9WgXcQ" in url:
-        webbrowser.open("https://youtu.be/dQw4w9WgXcQ")
-        print(f"\n{othercolour}{strbold}you rickroll me, i rickroll you{strreset}")
 
     print(f"\n{titlecolour}Fetching...{strreset}")
     titlecmd = "yt-dlp -e --no-playlist --no-warnings "+url
@@ -669,6 +677,11 @@ if arg_length < 2:
     title = title.replace("/","#")
     logging.info("title: "+str(title))
     print(f"{strgreen}Found - {strbold}{othercolour}\"{title}\"{strreset}")
+        
+    # easter egg
+    if "never gonna give you up" in title.lower() or "rickroll" in title.lower():
+        webbrowser.open("https://youtu.be/dQw4w9WgXcQ")
+        print(f"\n{othercolour}{strbold}you rickroll me, i rickroll you{strreset}")
 
     # if using youtube, assume mp4 to save time
     if force_container and container == "mp4" and ("youtube.com" in url or "youtu.be" in url or "ytsearch:" in url):
@@ -703,7 +716,7 @@ else:
         target_size = int(GetTargetSize())
     else:
         target_size = default_size
-    logging.info("target (in MB): "+str(target_size))
+    logging.info("target (in kB): "+str(target_size))
     if ask_trim:
         trim = GetTrimChoice()
     logging.info("trim: "+str(trim))
@@ -731,6 +744,8 @@ else:
     logging.info("loud: "+str(loud))
     if ask_text and not audioonly:
         dotext = GetTextChoice()
+    elif audioonly:
+        dotext = False
     logging.info("text: "+str(dotext))
 
     if dotext:
@@ -739,7 +754,7 @@ else:
         text2 = input(f"\n{strbold}{askcolour}Bottom text{strreset}\n> ")
         logging.info("text2: "+text2)
 
-
+target_size = float(target_size)
 clearscreen("Running...", strblue)
 
 # determine ffmpeg preset based on speed
@@ -748,6 +763,7 @@ preset = " -preset "+speeds[speed-1]
 logging.info(f"preset: {speeds[speed-1]}")
 
 targetfilename = filein
+originalsize = round(os.path.getsize(filein)/1000) # kB
 
 if audioonly:
     container = audiocontainer
@@ -864,15 +880,16 @@ elif loud:
     os.system(amplifycmd)
     filein = amp_filename
 
-targetSizeKB = int(target_size) * 1000 * bitrate_multiplier
+targetSizeKB = target_size * bitrate_multiplier
 logging.info("target size: "+str(targetSizeKB)+"KB")
 
 # calculate size: no need to shrink if file is already small enough
 size=os.path.getsize(filein)/1000   # in kB
-logging.info(f"size of input file: {size}kB")
-if size < target_size*1000 and not meme_mode:
+logging.info(f"size of input file: {size}kB (originally {originalsize}kB)")
+if size < targetSizeKB and not meme_mode:
     shutil.copy(filein, fileout)
 
+    # delete temp files
     for eachfile in tempfiles:
         os.remove(eachfile)
 
@@ -884,24 +901,26 @@ if size < target_size*1000 and not meme_mode:
     newdisplaysize=os.path.getsize(fileout)/1000 # in kB
     newkibisize=kibiconvert(newdisplaysize)
     logging.info(f"size of output file: {newdisplaysize}kB, or {newkibisize}kiB")
-    expected = target_size*1024
+    expected = targetSizeKB
     if newdisplaysize > expected:
         logging.info("somehow, shrinkray went backwards.")
         logging.info(f"expected {expected}kB, got {newdisplaysize}kB.")
         print(f"\n{strbold}{errorcolour}Congratulations, it seems like you have broken shrinkray.")
         print(f"Something happened that shouldn't be possible.")
-        print(f"Please open a GitHub issue, providing log, so that I can fix this.{strreset}")
-        printsizes(size, newdisplaysize)
+        print(f"Please open a GitHub issue, providing log, so that I can fix this.")
+        print(f"https://github.com/megabyte112/shrinkray/issues{strreset}")
+        
+        printsizes(originalsize, newdisplaysize)
     else:
         print(f"\n{strgreen}{strbold}The file is already small enough!{strreset}")
-        printsizes(size, newdisplaysize)
+        printsizes(originalsize, newdisplaysize)
         print("It has been copied to the output folder.")
         if open_when_done:
             showinfm.show_in_file_manager(fileout)
     logging.info("complete!")
     logging.shutdown()
     if wait_when_done:
-        input(f"You can now press {strbold}[Enter]{strunbold} or {strbold}close this window{strunbold} to exit.")
+        input(f"\nYou can now press {strbold}[Enter]{strunbold} or {strbold}close this window{strunbold} to exit.")
     sys.exit()
 
 # bitrate (in Mbps) = Size / Length
@@ -911,7 +930,7 @@ logging.info("fetching length with the following command")
 logging.info(lencmd)
 length = math.ceil(float(subprocess.getoutput(lencmd)))
 logging.info(f"video length: {length}s")
-totalbitrate=math.floor(targetSizeKB*8/length)
+totalbitrate=targetSizeKB*8/length
 
 # get fps
 if not audioonly:
@@ -948,12 +967,26 @@ if meme_mode:
         videobitrate = 20
     totalbitrate = audiobitrate + videobitrate
 
-logging.info(f"audio bitrate: {audiobitrate}kbps")
-logging.info(f"video bitrate: {videobitrate}kbps")
+if videobitrate >= 1 and not audioonly:
+    videobitrate = str(int(math.ceil(videobitrate))) + 'k'
+elif videobitrate < 1 and not audioonly:
+    videobitrate *= 1000
+    videobitrate = str(math.ceil(videobitrate))
+
+if audiobitrate >= 1 and not mute:
+    audiobitrate = str(int(math.ceil(audiobitrate))) + 'k'
+elif audiobitrate < 1 and not mute:
+    audiobitrate *= 1000
+    audiobitrate = str(math.ceil(audiobitrate))
+
+totalbitrate = round(totalbitrate)
+
+logging.info(f"audio bitrate: {audiobitrate}")
+logging.info(f"video bitrate: {videobitrate}")
 logging.info(f"total bitrate: {totalbitrate}kbps")
 
 if audioonly:
-    audioargs = f"-c:a {audio_codec} -b:a {audiobitrate}k {audiofilters}"
+    audioargs = f"-c:a {audio_codec} -b:a {audiobitrate} {audiofilters}"
     ffmpegcmd = f"{executable} -y -hide_banner -i \"{filein}\" {audioargs}\"{fileout}\""
     if send_notifs:
         notif_audiocompress.send()
@@ -963,7 +996,7 @@ if audioonly:
     os.system(ffmpegcmd)
     logging.info("called command")
 else:
-    audioargs = f"-b:a {audiobitrate}k "
+    audioargs = f"-b:a {audiobitrate} "
     if mute:
         audioargs = "-an "
     if not force_container:
@@ -979,7 +1012,7 @@ else:
         else:
             scale = max_res_size / width
             newres = str(max_res_size)+":"+str(round((height*scale)/2)*2)
-        videoargs = f"-vf scale={newres}{fpsargs}-c:v {video_codec} -b:v {videobitrate}k"
+        videoargs = f"-vf scale={newres}{fpsargs}-c:v {video_codec} -b:v {videobitrate}"
         if audioonly:
             videoargs = ""
         ffmpeg_commands = [f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
@@ -989,7 +1022,7 @@ else:
             fpsargs = "-vf fps="+str(target_fps)+" "
         else:
             fpsargs = ""
-        videoargs = f"{fpsargs}-c:v {video_codec} -b:v {videobitrate}k"
+        videoargs = f"{fpsargs}-c:v {video_codec} -b:v {videobitrate}"
         ffmpeg_commands = [f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
         f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
 
@@ -1005,15 +1038,17 @@ else:
     os.system(ffmpeg_commands[1])
     logging.info("called both commands")
 
-# done!
+
+# delete temp files
 for eachfile in tempfiles:
     os.remove(eachfile)
 
+# done!
 clearscreen("Complete!", strgreen)
 newdisplaysize=round(os.path.getsize(fileout)/1000) # in kB
 newkibisize=kibiconvert(newdisplaysize)
 logging.info(f"size of output file: {newdisplaysize}kB, or {newkibisize}kiB")
-expected = target_size*1024
+expected = target_size
 failed = False
 if newdisplaysize == 0:
     failed = True
@@ -1021,13 +1056,14 @@ if newdisplaysize == 0:
     if send_notifs:
         notif_failed.send()
     print(f"\n{strred}{strbold}Shrinking failed!{strunbold} Try adjusting some settings.")
-    print(f"If you can't fix it, tell megabyte112 or open a GitHub issue.{strreset}")
+    print(f"If you can't fix it, tell megabyte112 or open a GitHub issue.")
+    print(f"https://github.com/megabyte112/shrinkray/issues{strreset}")
 elif newdisplaysize > expected:
     logging.info("file is larger than expected!")
     if send_notifs:
         notif_toobig.send()
     print(f"\n{strbold}{stryellow}It looks like shrinkray couldn't shrink your file as much as you requested.{strreset}")
-    printsizes(size, newdisplaysize)
+    printsizes(originalsize, newdisplaysize)
     print(f"{stryellow}If you need it to be smaller, try lowering the target size and running shrinkray again.")
     print(f"The file was still saved.{strreset}")
 else:
@@ -1035,10 +1071,10 @@ else:
     if send_notifs:
         notif_complete.send()
     print(f"\n{strbold}{strgreen}Shrinking complete!\nCheck the output folder for your file.{strreset}")
-    printsizes(size, newdisplaysize)
+    printsizes(originalsize, newdisplaysize)
 logging.shutdown()
 if open_when_done and not failed:
     showinfm.show_in_file_manager(fileout)
 if wait_when_done:
-    input(f"You can now press {strbold}[Enter]{strunbold} or {strbold}close this window{strunbold} to exit.")
+    input(f"\nYou can now press {strbold}[Enter]{strunbold} or {strbold}close this window{strunbold} to exit.")
 sys.exit()
