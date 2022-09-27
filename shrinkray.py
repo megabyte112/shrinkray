@@ -262,7 +262,7 @@ if not os.path.isdir("download"):
     os.mkdir("download")
 
 # don't edit
-version = "1.6.2"
+version = "1.6.2.1"
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
@@ -872,7 +872,7 @@ elif loud:
     print(f"\n{strbold}{titlecolour}Amplifying...{strreset}")
     if send_notifs:
         notif_amplify.send()
-    amp_filename = f"amp_{launchtime}.{container}"
+    amp_filename = f"logs/amp_{launchtime}.{container}"
     amplifycmd = f"{executable} -y -i \"{filein}\" {audiofilters}\"{amp_filename}\""
     tempfiles.append(amp_filename)
     logging.info("amplifying with the following command:")
