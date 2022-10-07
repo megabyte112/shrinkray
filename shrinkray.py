@@ -693,6 +693,11 @@ if arg_length < 2:
             dotext = GetTextChoice()
         else:
             dotext = False
+        if dotext:
+            text1 = input(f"\n{strbold}{askcolour}Top text{strreset}\n> ")
+            logging.info("text1: "+text1)
+            text2 = input(f"\n{strbold}{askcolour}Bottom text{strreset}\n> ")
+            logging.info("text2: "+text2)
         if GetAdvancedOptionsChoice():
             print(f"\n{errorcolour}{strbold}Warning: Changing these may result in errors and crashes.{strreset}")
             if audioonly:
@@ -726,12 +731,6 @@ if arg_length < 2:
     logging.info("max audio bitrate: "+str(max_audio_bitrate))
     logging.info("max resolution: "+str(max_res_size))
     logging.info("target fps: "+str(target_fps))
-
-    if dotext:
-        text1 = input(f"\n{strbold}{askcolour}Top text{strreset}\n> ")
-        logging.info("text1: "+text1)
-        text2 = input(f"\n{strbold}{askcolour}Bottom text{strreset}\n> ")
-        logging.info("text2: "+text2)
 
     clearscreen("Downloading...", strpurple)
 
@@ -809,6 +808,11 @@ else:
             dotext = GetTextChoice()
         else:
             dotext = False
+        if dotext:
+            text1 = input(f"\n{strbold}{askcolour}Top text{strreset}\n> ")
+            logging.info("text1: "+text1)
+            text2 = input(f"\n{strbold}{askcolour}Bottom text{strreset}\n> ")
+            logging.info("text2: "+text2)
         if GetAdvancedOptionsChoice():
             print(f"\n{errorcolour}{strbold}Warning: Changing these may result in errors and crashes.{strreset}")
             if audioonly:
@@ -842,12 +846,6 @@ else:
     logging.info("max audio bitrate: "+str(max_audio_bitrate))
     logging.info("max resolution: "+str(max_res_size))
     logging.info("target fps: "+str(target_fps))
-
-    if dotext:
-        text1 = input(f"\n{strbold}{askcolour}Top text{strreset}\n> ")
-        logging.info("text1: "+text1)
-        text2 = input(f"\n{strbold}{askcolour}Bottom text{strreset}\n> ")
-        logging.info("text2: "+text2)
 
 target_size = float(target_size)
 clearscreen("Running...", strblue)
