@@ -24,53 +24,16 @@ suffix = "_shrinkray"
 # default: 0.95
 bitrate_multiplier = 0.95
 
-# ask user for target file size each launch.
-# default: True
-ask_size = True
-
-# ask user whether the media shall be trimmed each launch.
-# default: True
-ask_trim = True
-
-# ask user whether audioonly shall be used each launch.
-# default: True
-ask_audio = True
-
-# ask the user for mute preference each launch.
-# default: False
-ask_mute = False
-
-# ask the user for preferred speed each launch.
-# default: False
-ask_speed = False
-
-# ask the user for notification preference each launch.
-# default: True
-ask_notifs = True
-
-# ask the user for meme mode preference each launch.
-# default: False
-ask_meme = False
-
-# ask the user for loud mode preference each launch.
-# default: False
-ask_loud = False
-
-# ask the user for text preference each launch.
-# default: False
-ask_text = False
-
 # default target file size in kB.
 # default: 8000
 default_size = 8000
 
-# trims the video between two timestamps.
+# trims the video between two timestamps by default.
 # default: False
 trim = False
 
-# shrinking speed, a number between 1 and 10, higher is faster.
+# default shrinking speed, a number between 1 and 10, higher is faster.
 # lower speeds lead to more accurate file sizes.
-# useless when ask_speed is True.
 # default: 5
 speed = 5
 
@@ -78,17 +41,16 @@ speed = 5
 # default: True
 wait_when_done = True
 
-# open in default file manager when done.
+# open in file manager by default when done.
 # default: True
 open_when_done = True
 
-# send desktop notifications when shrinkray completes.
-# useless if ask_notifs is True.
+# send desktop notifications by default when shrinkray completes.
 # default: True
 send_notifs = True
 
 # amount of allowed items in any of shrinkray's folders before showing a warning.
-# these folders, especially 'download', can reach very large file sizes.
+# these folders can eventually reach very large file sizes.
 # set to None to disable.
 # default: 100
 warning_threshhold = 100
@@ -258,8 +220,11 @@ if not os.path.isdir("logs"):
     os.mkdir("logs")
 if not os.path.isdir("output"):
     os.mkdir("output")
-if not os.path.isdir("download"):
-    os.mkdir("download")
+if not os.path.isdir("temp"):
+    os.mkdir("temp")
+
+tempdir = "temp/"+str(launchtime)
+os.mkdir(tempdir)
 
 # don't edit
 version = "1.6.3"
@@ -437,9 +402,6 @@ def countfiles(path):
 log_count = countfiles("logs")
 logging.info(f"logs: {log_count}")
 
-dl_count = countfiles("download")
-logging.info(f"download: {dl_count}")
-
 out_count = countfiles("output")
 logging.info(f"output: {out_count}")
 
@@ -478,11 +440,6 @@ if warning_threshhold is not None:
         sizewarned = True
         print(f"\n{errorcolour}Logs folder contains {log_count} items!")
         print(f"Consider clearing it once shrinkray is closed.{strreset}")
-    if dl_count >= warning_threshhold:
-        sizewarned = True
-        print(f"\n{errorcolour}Download folder contains {dl_count} items!")
-        print(f"{strbold}This folder can take up a lot of unnecessary space.{strunbold}")
-        print(f"Consider clearing it once shrinkray is closed.{strreset}")
     if out_count >= warning_threshhold:
         sizewarned = True
         print(f"\n{errorcolour}Output folder contains {out_count} items!")
@@ -512,28 +469,54 @@ def printsizes(size1, size2):
     print(f"{titlecolour}{strbold}Shrink percentage: {othercolour}{shrinkness}%{strreset}")
     print()
 
-# text must be a number greater than 0
-def CheckValidInput(text):
+def CheckValidSizeInput(text):
     if 'k' in text:
         text = text[0:len(text)-1]
+    return text.isnumeric() and int(text) >= 0
+
+def CheckValidInput(text):
     return text.isnumeric() and int(text) > 0
 
 def CheckValidSpeedInput(text):
     return text.isnumeric() and int(text) > 0 and int(text) <= 10
 
+def CheckValidRatioInput(text):
+    text = text.split("/")
+    return len(text) == 2 and text[0].isnumeric() and text[1].isnumeric() and int(text[0]) < int(text[1])
+
+def GetMoreOptionsChoice():
+    text = input(f"\n{strbold}{askcolour}More options?{strreset} [Y/N]\n> ")
+    return text.lower() == "y"
+
+def GetAdvancedOptionsChoice():
+    text = input(f"\n{strbold}{askcolour}Advanced options?{strreset} [Y/N]\n> ")
+    return text.lower() == "y"
+
 # ask for target file size
 def GetTargetSize():
-    text = "0"
-    while not CheckValidInput(text):
-        text = input(f"\n{strbold}{askcolour}Target file size in MB {strreset}[add k for kB]\n> ")
+    text = "abc"
+    while not CheckValidSizeInput(text):
+        text = input(f"\n{strbold}{askcolour}Target file size in MB {strreset}[add k for kB, or enter 0 for no limit]\n> ")
         if text == "":
             return default_size
-        if not CheckValidInput(text):
+        if not CheckValidSizeInput(text):
             logging.warning("rejected input: "+str(text))
-            print(f"\n{errorcolour}Make sure your input a whole number greater than 0!{strreset}")
+            print(f"\n{errorcolour}Make sure your input a whole number!{strreset}")
         if 'k' in text:
             return text[0:len(text)-1]
     return text + "000"
+
+def GetAudioRatio():
+    text = "0"
+    while not CheckValidRatioInput(text):
+        text = input(f"\n{strbold}{askcolour}Audio ratio {strreset}[as bottom-heavy fraction of two ints: x/y]\n> ")
+        if text == "":
+            return audioratio
+        if not CheckValidRatioInput(text):
+            logging.warning("rejected input: "+str(text))
+            print(f"\n{errorcolour}Make sure your input a bottom-heavy fraction of two integers, like 1/4.{strreset}")
+    text = text.split("/")
+    return text[0]/text[1]
 
 # ask for speed
 def GetSpeed():
@@ -547,6 +530,71 @@ def GetSpeed():
             print(f"\n{errorcolour}Make sure your input a whole number between 1 and 10{strreset}")
     return text
 
+def GetAudioContainer():
+    global audiocontainer
+    text = input(f"\n{strbold}{askcolour}Audio container{strreset}\n> ")
+    if text == "":
+        return audiocontainer
+    else:
+        return text
+
+def GetAudioCodec():
+    global audio_codec
+    text = input(f"\n{strbold}{askcolour}Audio codec{strreset}\n> ")
+    if text == "":
+        return audio_codec
+    else:
+        return text
+
+def GetVideoContainer():
+    global container
+    text = input(f"\n{strbold}{askcolour}Video container{strreset}\n> ")
+    if text == "":
+        return container
+    else:
+        return text
+
+def GetVideoCodec():
+    global video_codec
+    text = input(f"\n{strbold}{askcolour}Video codec{strreset}\n> ")
+    if text == "":
+        return video_codec
+    else:
+        return text
+
+def GetMaxAudioBitrate():
+    text = "0"
+    while not CheckValidInput(text):
+        text = input(f"\n{strbold}{askcolour}Max audio bitrate {strreset}[in kB]\n> ")
+        if text == "":
+            return max_audio_bitrate
+        if not CheckValidInput(text):
+            logging.warning("rejected input: "+str(text))
+            print(f"\n{errorcolour}Make sure your input a whole number greater than 0!{strreset}")
+    return text
+
+def GetMaxRes():
+    text = "0"
+    while not CheckValidInput(text):
+        text = input(f"\n{strbold}{askcolour}Max audio bitrate {strreset}[in kB]\n> ")
+        if text == "":
+            return max_res_size
+        if not CheckValidInput(text):
+            logging.warning("rejected input: "+str(text))
+            print(f"\n{errorcolour}Make sure your input a whole number greater than 0!{strreset}")
+    return text
+
+def GetMaxFramerate():
+    text = "0"
+    while not CheckValidInput(text):
+        text = input(f"\n{strbold}{askcolour}Max audio bitrate {strreset}[in kB]\n> ")
+        if text == "":
+            return target_fps
+        if not CheckValidInput(text):
+            logging.warning("rejected input: "+str(text))
+            print(f"\n{errorcolour}Make sure your input a whole number greater than 0!{strreset}")
+    return text
+
 def GetTrimChoice():
     global trim
     text = input(f"\n{strbold}{askcolour}Trim video?{strreset} [Y/N]\n> ")
@@ -555,6 +603,15 @@ def GetTrimChoice():
     elif text.lower() == "y":
         return True
     return trim
+
+def GetOpenWhenDoneChoice():
+    global open_when_done
+    text = input(f"\n{strbold}{askcolour}Open file manger when completed?{strreset} [Y/N]\n> ")
+    if text.lower() == "n":
+        return False
+    elif text.lower() == "y":
+        return True
+    return open_when_done
 
 def GetAudioChoice():
     global audioonly
@@ -615,41 +672,60 @@ if arg_length < 2:
     logging.info("prepare download...")
     url=input(f"\n{strbold}{askcolour}Paste a video link.{strreset}\n> ")
     logging.info(f"input: \"{url}\"")
-    if ask_size:   
-        target_size = int(GetTargetSize())
-    else:
-        target_size = default_size
+    target_size = int(GetTargetSize())
     logging.info("target (in kB): "+str(target_size))
-    if ask_trim:
+    if GetMoreOptionsChoice():
         trim = GetTrimChoice()
-    logging.info("trim: "+str(trim))
-    if trim:
-        start_time = input(f"\n{strbold}{askcolour}Start time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
-        end_time = input(f"\n{strbold}{askcolour}End time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
-        logging.info(f"time range between {start_time} and {end_time}")
-    if ask_audio:
+        if trim:
+            start_time = input(f"\n{strbold}{askcolour}Start time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
+            end_time = input(f"\n{strbold}{askcolour}End time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
+            logging.info(f"time range between {start_time} and {end_time}")
         audioonly = GetAudioChoice()
-    logging.info("audioonly: "+str(audioonly))
-    if ask_mute and not audioonly:
-        mute = GetMuteChoice()
-    logging.info("mute: "+str(mute))
-    if ask_speed:
+        if not audioonly:
+            mute = GetMuteChoice()
+        if not mute:
+            loud = GetLoudChoice()
         speed = int(GetSpeed())
-    logging.info("speed: "+str(speed))
-    if ask_notifs:
         send_notifs = GetNotifChoice()
-    logging.info("notifs: "+str(send_notifs))
-    if ask_meme:
+        open_when_done = GetOpenWhenDoneChoice()
         meme_mode = GetMemeChoice()
+        if not audioonly:
+            dotext = GetTextChoice()
+        else:
+            dotext = False
+        if GetAdvancedOptionsChoice():
+            print(f"\n{errorcolour}{strbold}Warning: Changing these may result in errors and crashes.{strreset}")
+            if audioonly:
+                audiocontainer = GetAudioContainer()
+                audio_codec = GetAudioCodec()
+            else:
+                container = GetVideoContainer()
+                video_codec = GetVideoCodec()
+            if not audioonly and not meme_mode:
+                audioratio = GetAudioRatio()
+                max_audio_bitrate = GetMaxAudioBitrate()
+                max_res_size = GetMaxRes()
+                target_fps = GetMaxFramerate()
+
+    logging.info("trim: "+str(trim))
+    logging.info("audioonly: "+str(audioonly))
+    logging.info("mute: "+str(mute))
+    logging.info("speed: "+str(speed))
+    logging.info("notifs: "+str(send_notifs))
+    logging.info("open filemgr: "+str(open_when_done))
     logging.info("meme: "+str(meme_mode))
-    if ask_loud:
-        loud = GetLoudChoice()
     logging.info("loud: "+str(loud))
-    if ask_text and not audioonly:
-        dotext = GetTextChoice()
-    elif audioonly:
-        dotext = False
     logging.info("text: "+str(dotext))
+    if audioonly:
+        logging.info("audio container: "+str(audiocontainer))
+        logging.info("audio codec: "+str(audio_codec))
+    else:
+        logging.info("video container: "+str(container))
+        logging.info("video codec: "+str(video_codec))
+    logging.info("audioratio: "+str(audioratio))
+    logging.info("max audio bitrate: "+str(max_audio_bitrate))
+    logging.info("max resolution: "+str(max_res_size))
+    logging.info("target fps: "+str(target_fps))
 
     if dotext:
         text1 = input(f"\n{strbold}{askcolour}Top text{strreset}\n> ")
@@ -691,7 +767,7 @@ if arg_length < 2:
         typearg = ""
 
     # find filename
-    getfilenamecmd = f"yt-dlp \"{url}\" --get-filename --no-playlist --no-warnings {typearg}-o \"download/{title}.%(ext)s\""
+    getfilenamecmd = f"yt-dlp \"{url}\" --get-filename --no-playlist --no-warnings {typearg}-o \"{tempdir}/{title}.%(ext)s\""
     logging.info("fetching filename with the following command")
     logging.info(getfilenamecmd)
     filein = subprocess.getoutput(getfilenamecmd)
@@ -712,41 +788,60 @@ else:
     # if user is supplying file
     filein=sys.argv[1]
     logging.info("target file "+filein)
-    if ask_size:   
-        target_size = int(GetTargetSize())
-    else:
-        target_size = default_size
+    target_size = int(GetTargetSize())
     logging.info("target (in kB): "+str(target_size))
-    if ask_trim:
+    if GetMoreOptionsChoice():
         trim = GetTrimChoice()
-    logging.info("trim: "+str(trim))
-    if trim:
-        start_time = input(f"\n{strbold}{askcolour}Start time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
-        end_time = input(f"\n{strbold}{askcolour}End time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
-        logging.info(f"time range between {start_time} and {end_time}")
-    if ask_audio:
+        if trim:
+            start_time = input(f"\n{strbold}{askcolour}Start time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
+            end_time = input(f"\n{strbold}{askcolour}End time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
+            logging.info(f"time range between {start_time} and {end_time}")
         audioonly = GetAudioChoice()
-    logging.info("audioonly: "+str(audioonly))
-    if ask_mute and not audioonly:
-        mute = GetMuteChoice()
-    logging.info("mute: "+str(mute))
-    if ask_speed:
+        if not audioonly:
+            mute = GetMuteChoice()
+        if not mute:
+            loud = GetLoudChoice()
         speed = int(GetSpeed())
-    logging.info("speed: "+str(speed))
-    if ask_notifs:
         send_notifs = GetNotifChoice()
-    logging.info("notifs: "+str(send_notifs))
-    if ask_meme:
+        open_when_done = GetOpenWhenDoneChoice()
         meme_mode = GetMemeChoice()
+        if not audioonly:
+            dotext = GetTextChoice()
+        else:
+            dotext = False
+        if GetAdvancedOptionsChoice():
+            print(f"\n{errorcolour}{strbold}Warning: Changing these may result in errors and crashes.{strreset}")
+            if audioonly:
+                audiocontainer = GetAudioContainer()
+                audio_codec = GetAudioCodec()
+            else:
+                container = GetVideoContainer()
+                video_codec = GetVideoCodec()
+            if not audioonly and not meme_mode:
+                audioratio = GetAudioRatio()
+                max_audio_bitrate = GetMaxAudioBitrate()
+                max_res_size = GetMaxRes()
+                target_fps = GetMaxFramerate()
+
+    logging.info("trim: "+str(trim))
+    logging.info("audioonly: "+str(audioonly))
+    logging.info("mute: "+str(mute))
+    logging.info("speed: "+str(speed))
+    logging.info("notifs: "+str(send_notifs))
+    logging.info("open filemgr: "+str(open_when_done))
     logging.info("meme: "+str(meme_mode))
-    if ask_loud:
-        loud = GetLoudChoice()
     logging.info("loud: "+str(loud))
-    if ask_text and not audioonly:
-        dotext = GetTextChoice()
-    elif audioonly:
-        dotext = False
     logging.info("text: "+str(dotext))
+    if audioonly:
+        logging.info("audio container: "+str(audiocontainer))
+        logging.info("audio codec: "+str(audio_codec))
+    else:
+        logging.info("video container: "+str(container))
+        logging.info("video codec: "+str(video_codec))
+    logging.info("audioratio: "+str(audioratio))
+    logging.info("max audio bitrate: "+str(max_audio_bitrate))
+    logging.info("max resolution: "+str(max_res_size))
+    logging.info("target fps: "+str(target_fps))
 
     if dotext:
         text1 = input(f"\n{strbold}{askcolour}Top text{strreset}\n> ")
@@ -782,7 +877,7 @@ if fileincontain != container and (force_container or audioonly):
     print(f"\n{strbold}{titlecolour}Converting to {othercolour}{container}{titlecolour}...{strreset}")
     if send_notifs:
         notif_convert.send()
-    convert_filename = f"logs/conv_{launchtime}.{container}"
+    convert_filename = f"{tempdir}/conv_{launchtime}.{container}"
     convertcommand = f"{executable} -y -i \"{filein}\"{preset} \"{convert_filename}\""
     tempfiles.append(convert_filename)
     logging.info(convertcommand)
@@ -795,7 +890,7 @@ if trim:
         notif_trim.send()
     print(f"\n{strbold}{titlecolour}Trimming between {othercolour}{start_time}{titlecolour} and {othercolour}{end_time}{titlecolour}...{strreset}")
     print(f"{othercolour}(the progress bar may not fully complete){strreset}")
-    trim_filename = f"logs/trim_{launchtime}.{container}"
+    trim_filename = f"{tempdir}/trim_{launchtime}.{container}"
     trimcommand = f"{executable} -y -i \"{filein}\" -ss {start_time} -to {end_time} \"{trim_filename}\""
     tempfiles.append(trim_filename)
     logging.info("trimming with the following command")
@@ -846,7 +941,7 @@ if dotext:
     text2 = text2.replace("\"","\\\"")
     text2 = text2.replace("'","\\\'")
     textheight = math.floor(width / text_devisor)
-    text_filename = f"logs/txt_{launchtime}.{container}"
+    text_filename = f"{tempdir}/txt_{launchtime}.{container}"
     textcmd = f"{executable} -y -i \"{filein}\" -filter_complex \"[0:v]pad=iw:ih+{textheight*2}:0:(oh-ih)/2:color=white,drawtext=text='{text1}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=({textheight}-th)/2,drawtext=text='{text2}':fontsize={math.floor(textheight*0.75)}:x=(w-tw)/2:y=h-{math.floor(textheight/2)}-(th/2)\"{preset} \"{text_filename}\""
     tempfiles.append(text_filename)
     logging.info("adding text with the following command:")
@@ -861,7 +956,7 @@ if mute:
     print(f"\n{strbold}{titlecolour}Removing Audio...{strreset}")
     if send_notifs:
         notif_mute.send()
-    mute_filename = f"logs/mute_{launchtime}.{container}"
+    mute_filename = f"{tempdir}/mute_{launchtime}.{container}"
     mutecmd = f"{executable} -y -i \"{filein}\" -an \"{mute_filename}\""
     tempfiles.append(mute_filename)
     logging.info("removing audio with the following command:")
@@ -872,7 +967,7 @@ elif loud:
     print(f"\n{strbold}{titlecolour}Amplifying...{strreset}")
     if send_notifs:
         notif_amplify.send()
-    amp_filename = f"logs/amp_{launchtime}.{container}"
+    amp_filename = f"{tempdir}/amp_{launchtime}.{container}"
     amplifycmd = f"{executable} -y -i \"{filein}\" {audiofilters}\"{amp_filename}\""
     tempfiles.append(amp_filename)
     logging.info("amplifying with the following command:")
@@ -886,12 +981,11 @@ logging.info("target size: "+str(targetSizeKB)+"KB")
 # calculate size: no need to shrink if file is already small enough
 size=os.path.getsize(filein)/1000   # in kB
 logging.info(f"size of input file: {size}kB (originally {originalsize}kB)")
-if size < targetSizeKB and not meme_mode:
+if (size < targetSizeKB or targetSizeKB == 0) and not meme_mode:
     shutil.copy(filein, fileout)
 
     # delete temp files
-    for eachfile in tempfiles:
-        os.remove(eachfile)
+    shutil.rmtree(tempdir)
 
     clearscreen("Complete!", strgreen)
 
@@ -902,7 +996,7 @@ if size < targetSizeKB and not meme_mode:
     newkibisize=kibiconvert(newdisplaysize)
     logging.info(f"size of output file: {newdisplaysize}kB, or {newkibisize}kiB")
     expected = targetSizeKB
-    if newdisplaysize > expected:
+    if newdisplaysize > expected and expected != 0:
         logging.info("somehow, shrinkray went backwards.")
         logging.info(f"expected {expected}kB, got {newdisplaysize}kB.")
         print(f"\n{strbold}{errorcolour}Congratulations, it seems like you have broken shrinkray.")
@@ -990,7 +1084,7 @@ if audioonly:
     ffmpegcmd = f"{executable} -y -hide_banner -i \"{filein}\" {audioargs}\"{fileout}\""
     if send_notifs:
         notif_audiocompress.send()
-    print(f"\n{strbold}{titlecolour}Shrinking, this can take a while...{strreset}")
+    print(f"\n{strbold}{titlecolour}Shrinking...{strreset}")
     logging.info("audio shrinking using the following command")
     logging.info(ffmpegcmd)
     os.system(ffmpegcmd)
@@ -1015,18 +1109,17 @@ else:
         videoargs = f"-vf scale={newres}{fpsargs}-c:v {video_codec} -b:v {videobitrate}"
         if audioonly:
             videoargs = ""
-        ffmpeg_commands = [f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-        f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
+        ffmpeg_commands = [f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile {tempdir}/fflog{launchtime} -pass 1 -an -f null {nullfile}",
+        f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile {tempdir}/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
     else:
         if lowerfps:
             fpsargs = "-vf fps="+str(target_fps)+" "
         else:
             fpsargs = ""
         videoargs = f"{fpsargs}-c:v {video_codec} -b:v {videobitrate}"
-        ffmpeg_commands = [f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} -pass 1 -an -f null {nullfile}",
-        f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile logs/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
+        ffmpeg_commands = [f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile {tempdir}/fflog{launchtime} -pass 1 -an -f null {nullfile}",
+        f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile {tempdir}/fflog{launchtime} {audioargs}-pass 2 \"{fileout}\""]
 
-    print(f"\n{strbold}{titlecolour}Shrinking using two-pass, this can take a while.{strreset}")
     logging.info("calling ffmpeg for two-pass, will now log commands")
     logging.info(ffmpeg_commands[0])
     if send_notifs:
@@ -1040,8 +1133,7 @@ else:
 
 
 # delete temp files
-for eachfile in tempfiles:
-    os.remove(eachfile)
+shutil.rmtree(tempdir)
 
 # done!
 clearscreen("Complete!", strgreen)
@@ -1058,7 +1150,7 @@ if newdisplaysize == 0:
     print(f"\n{strred}{strbold}Shrinking failed!{strunbold} Try adjusting some settings.")
     print(f"If you can't fix it, tell megabyte112 or open a GitHub issue.")
     print(f"https://github.com/megabyte112/shrinkray/issues{strreset}")
-elif newdisplaysize > expected:
+elif newdisplaysize > expected and expected != 0:
     logging.info("file is larger than expected!")
     if send_notifs:
         notif_toobig.send()
