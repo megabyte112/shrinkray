@@ -598,7 +598,7 @@ def GetMaxAudioBitrate():
             return max_audio_bitrate
         if not CheckValidInput(text):
             logging.warning("rejected input: "+str(text))
-            print(f"\n{errorcolour}Make sure your input a whole number greater than 0!{strreset}")
+            print(f"\n{errorcolour}Make sure your input is a whole number greater than 0.{strreset}")
     return text
 
 def GetMaxRes():
@@ -610,7 +610,7 @@ def GetMaxRes():
             return max_res_size
         if not CheckValidInput(text):
             logging.warning("rejected input: "+str(text))
-            print(f"\n{errorcolour}Make sure your input a single whole number greater than 0!{strreset}")
+            print(f"\n{errorcolour}Make sure your input is a single whole number greater than 0.{strreset}")
     return text
 
 def GetMaxFramerate():
@@ -622,7 +622,7 @@ def GetMaxFramerate():
             return target_fps
         if not CheckValidInput(text):
             logging.warning("rejected input: "+str(text))
-            print(f"\n{errorcolour}Make sure your input a whole number greater than 0!{strreset}")
+            print(f"\n{errorcolour}Make sure your input is a whole number greater than 0.{strreset}")
     return text
 
 def GetTrimChoice():
@@ -752,7 +752,6 @@ if arg_length < 2:
         audioonly = GetAudioChoice()
         if not audioonly:
             mute = GetMuteChoice()
-        speed = int(GetSpeed())
         send_notifs = GetNotifChoice()
         open_when_done = GetOpenWhenDoneChoice()
         meme_mode = GetMemeChoice()
@@ -771,6 +770,7 @@ if arg_length < 2:
             logging.info("text2: "+text2)
         if GetAdvancedOptionsChoice():
             print(f"\n{errorcolour}{strbold}Warning: Changing these may result in errors and crashes.{strreset}")
+            speed = int(GetSpeed())
             if audioonly:
                 audiocontainer = GetAudioContainer()
                 audio_codec = GetAudioCodec()
@@ -879,7 +879,6 @@ else:
         audioonly = GetAudioChoice()
         if not audioonly:
             mute = GetMuteChoice()
-        speed = int(GetSpeed())
         send_notifs = GetNotifChoice()
         open_when_done = GetOpenWhenDoneChoice()
         meme_mode = GetMemeChoice()
@@ -898,6 +897,7 @@ else:
             logging.info("text2: "+text2)
         if GetAdvancedOptionsChoice():
             print(f"\n{errorcolour}{strbold}Warning: Changing these may result in errors and crashes.{strreset}")
+            speed = int(GetSpeed())
             if audioonly:
                 audiocontainer = GetAudioContainer()
                 audio_codec = GetAudioCodec()
