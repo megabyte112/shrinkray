@@ -164,6 +164,20 @@ loud = False
 # default: False
 dotext = False
 
+# reverb audio.
+# default: False
+reverb = False
+
+# playback speed.
+# default: 1.0
+playbackspeed = 1.0
+
+# interpolate frames if playback speed is changed.
+# this makes it look smoother, and is interpolated to target_fps.
+# however, this is extremely slow.
+# default: False
+interpolate = False
+
 # how many times smaller than the width is the text padding.
 # higher is smaller.
 # default: 10
@@ -392,6 +406,19 @@ notif_trim = notifypy.Notify()
 notif_trim.title = "Trimming"
 notif_trim.message = "Your file is being trimmed to your specified time."
 
+notif_spd = notifypy.Notify()
+notif_spd.title = "Changing speed"
+notif_spd.message = "The playback speed is being changed."
+
+notif_reverb = notifypy.Notify()
+notif_reverb.title = "Adding reverb"
+notif_reverb.message = "Reverb is being added to audio."
+
+notif_interpolate = notifypy.Notify()
+notif_interpolate.title = "Interpolating"
+notif_interpolate.message = "Your video is being interpolated for added smoothness."
+
+
 
 logging.info("counting files")
 
@@ -516,13 +543,13 @@ def GetAudioRatio():
             logging.warning("rejected input: "+str(text))
             print(f"\n{errorcolour}Make sure your input a bottom-heavy fraction of two integers, like 1/4.{strreset}")
     text = text.split("/")
-    return text[0]/text[1]
+    return float(text[0])/float(text[1])
 
 # ask for speed
 def GetSpeed():
     text = "0"
     while not CheckValidSpeedInput(text):
-        text = input(f"\n{strbold}{askcolour}Speed level{strreset} [1-10]\n> ")
+        text = input(f"\n{strbold}{askcolour}Encoding speed{strreset} [1-10]\n> ")
         if text == "":
             return speed
         if not CheckValidSpeedInput(text):
@@ -563,9 +590,10 @@ def GetVideoCodec():
         return text
 
 def GetMaxAudioBitrate():
+    global max_audio_bitrate
     text = "0"
     while not CheckValidInput(text):
-        text = input(f"\n{strbold}{askcolour}Max audio bitrate {strreset}[in kB]\n> ")
+        text = input(f"\n{strbold}{askcolour}Max audio bitrate {strreset}[in kbps]\n> ")
         if text == "":
             return max_audio_bitrate
         if not CheckValidInput(text):
@@ -574,20 +602,22 @@ def GetMaxAudioBitrate():
     return text
 
 def GetMaxRes():
+    global max_res_size
     text = "0"
     while not CheckValidInput(text):
-        text = input(f"\n{strbold}{askcolour}Max audio bitrate {strreset}[in kB]\n> ")
+        text = input(f"\n{strbold}{askcolour}Max resolution {strreset}[in pixels, longest edge]\n> ")
         if text == "":
             return max_res_size
         if not CheckValidInput(text):
             logging.warning("rejected input: "+str(text))
-            print(f"\n{errorcolour}Make sure your input a whole number greater than 0!{strreset}")
+            print(f"\n{errorcolour}Make sure your input a single whole number greater than 0!{strreset}")
     return text
 
 def GetMaxFramerate():
+    global target_fps
     text = "0"
     while not CheckValidInput(text):
-        text = input(f"\n{strbold}{askcolour}Max audio bitrate {strreset}[in kB]\n> ")
+        text = input(f"\n{strbold}{askcolour}Max framerate {strreset}[in fps]\n> ")
         if text == "":
             return target_fps
         if not CheckValidInput(text):
@@ -603,6 +633,45 @@ def GetTrimChoice():
     elif text.lower() == "y":
         return True
     return trim
+
+def GetReverbChoice():
+    global reverb
+    text = input(f"\n{strbold}{askcolour}Reverb audio?{strreset} [Y/N]\n> ")
+    if text.lower() == "n":
+        return False
+    elif text.lower() == "y":
+        return True
+    return reverb
+
+def GetInterpolateChoice():
+    global interpolate
+    text = input(f"\n{strbold}{askcolour}Interpolate video?{strreset} [Y/N]\n> ")
+    if text.lower() == "n":
+        return False
+    elif text.lower() == "y":
+        return True
+    return interpolate
+
+def CheckValidSpeedFloat(text):
+    try:
+        a = float(text)
+    except ValueError:
+        return False
+    if a > 0.0 and a <= 2.0:
+        return True
+    return False
+
+def GetPlaybackSpeed():
+    global playbackspeed
+    text = "abc"
+    while not CheckValidSpeedFloat(text):
+        text = input(f"\n{strbold}{askcolour}Playback speed {strreset}[normal speed = 1]\n> ")
+        if text == "":
+            return playbackspeed
+        if not CheckValidSpeedFloat(text):
+            logging.warning("rejected input: "+str(text))
+            print(f"\n{errorcolour}Make sure your input is a decimal number greater than 0 and less than or equal to 2.0.{strreset}")
+    return text
 
 def GetOpenWhenDoneChoice():
     global open_when_done
@@ -683,12 +752,14 @@ if arg_length < 2:
         audioonly = GetAudioChoice()
         if not audioonly:
             mute = GetMuteChoice()
-        if not mute:
-            loud = GetLoudChoice()
         speed = int(GetSpeed())
         send_notifs = GetNotifChoice()
         open_when_done = GetOpenWhenDoneChoice()
         meme_mode = GetMemeChoice()
+        if not mute:
+            loud = GetLoudChoice()
+        reverb = GetReverbChoice()
+        playbackspeed = float(GetPlaybackSpeed())
         if not audioonly:
             dotext = GetTextChoice()
         else:
@@ -706,11 +777,13 @@ if arg_length < 2:
             else:
                 container = GetVideoContainer()
                 video_codec = GetVideoCodec()
+                if playbackspeed != 1.0:
+                    interpolate = GetInterpolateChoice()
             if not audioonly and not meme_mode:
-                audioratio = GetAudioRatio()
-                max_audio_bitrate = GetMaxAudioBitrate()
-                max_res_size = GetMaxRes()
-                target_fps = GetMaxFramerate()
+                audioratio = float(GetAudioRatio())
+                max_audio_bitrate = int(GetMaxAudioBitrate())
+                max_res_size = int(GetMaxRes())
+                target_fps = int(GetMaxFramerate())
 
     logging.info("trim: "+str(trim))
     logging.info("audioonly: "+str(audioonly))
@@ -720,6 +793,9 @@ if arg_length < 2:
     logging.info("open filemgr: "+str(open_when_done))
     logging.info("meme: "+str(meme_mode))
     logging.info("loud: "+str(loud))
+    logging.info("reverb: "+str(reverb))
+    logging.info("playbackspeed: "+str(playbackspeed))
+    logging.info("interpolate: "+str(interpolate))
     logging.info("text: "+str(dotext))
     if audioonly:
         logging.info("audio container: "+str(audiocontainer))
@@ -771,6 +847,11 @@ if arg_length < 2:
     logging.info(getfilenamecmd)
     filein = subprocess.getoutput(getfilenamecmd)
     logging.info("filename: "+filein)
+    splitfile = filein.split(".")
+    extension = splitfile[len(splitfile)-1]
+    dlname = f"{tempdir}/dl_{launchtime}.{extension}"
+    targetfilename = filein
+    filein = dlname
 
     # escape quotes
     url=url.replace("\"","\\\"")
@@ -798,12 +879,14 @@ else:
         audioonly = GetAudioChoice()
         if not audioonly:
             mute = GetMuteChoice()
-        if not mute:
-            loud = GetLoudChoice()
         speed = int(GetSpeed())
         send_notifs = GetNotifChoice()
         open_when_done = GetOpenWhenDoneChoice()
         meme_mode = GetMemeChoice()
+        if not mute:
+            loud = GetLoudChoice()
+        reverb = GetReverbChoice()
+        playbackspeed = float(GetPlaybackSpeed())
         if not audioonly:
             dotext = GetTextChoice()
         else:
@@ -821,11 +904,13 @@ else:
             else:
                 container = GetVideoContainer()
                 video_codec = GetVideoCodec()
+                if playbackspeed != 1.0:
+                    interpolate = GetInterpolateChoice()
             if not audioonly and not meme_mode:
-                audioratio = GetAudioRatio()
-                max_audio_bitrate = GetMaxAudioBitrate()
-                max_res_size = GetMaxRes()
-                target_fps = GetMaxFramerate()
+                audioratio = float(GetAudioRatio())
+                max_audio_bitrate = int(GetMaxAudioBitrate())
+                max_res_size = int(GetMaxRes())
+                target_fps = int(GetMaxFramerate())
 
     logging.info("trim: "+str(trim))
     logging.info("audioonly: "+str(audioonly))
@@ -835,6 +920,9 @@ else:
     logging.info("open filemgr: "+str(open_when_done))
     logging.info("meme: "+str(meme_mode))
     logging.info("loud: "+str(loud))
+    logging.info("reverb: "+str(reverb))
+    logging.info("playbackspeed: "+str(playbackspeed))
+    logging.info("interpolate: "+str(interpolate))
     logging.info("text: "+str(dotext))
     if audioonly:
         logging.info("audio container: "+str(audiocontainer))
@@ -855,7 +943,6 @@ speeds = ["placebo", "veryslow", "slower", "slow", "medium", "fast", "faster", "
 preset = " -preset "+speeds[speed-1]
 logging.info(f"preset: {speeds[speed-1]}")
 
-targetfilename = filein
 originalsize = round(os.path.getsize(filein)/1000) # kB
 
 if audioonly:
@@ -895,6 +982,47 @@ if trim:
     logging.info(trimcommand)
     os.system(trimcommand)
     filein = trim_filename
+
+# get sample rate
+samplerate = 0
+if not mute:
+    getratecmd = f"ffprobe -v error -select_streams a -of default=noprint_wrappers=1:nokey=1 -show_entries stream=sample_rate \"{filein}\""
+    logging.info("fetching sample rate with the following command")
+    logging.info(getratecmd)
+    samplerate = float(subprocess.getoutput(getratecmd))
+
+# playback speed
+if playbackspeed != 1.0:
+    if send_notifs:
+        notif_spd.send()
+    print(f"\n{strbold}{titlecolour}Recoding at {othercolour}{playbackspeed}x{titlecolour} speed...{strreset}")
+    print(f"{othercolour}(the progress bar may disappear, or not fully complete){strreset}")
+    spd_filename = f"{tempdir}/spd_{launchtime}.{container}"
+    spdmult = 1.0/playbackspeed
+    if audioonly:
+        spdcommand = f"{executable} -y -i \"{filein}\" -filter:a \"asetrate={samplerate*playbackspeed},aresample={samplerate}\" \"{spd_filename}\""
+    elif mute:
+        spdcommand = f"{executable} -y -i \"{filein}\" -filter:v \"setpts={spdmult}*PTS\" \"{spd_filename}\""
+    else:
+        spdcommand = f"{executable} -y -i \"{filein}\" -filter_complex \"[0:v]setpts={spdmult}*PTS[v];[0:a]asetrate={samplerate*playbackspeed},aresample={samplerate}[a]\" -map \"[v]\" -map \"[a]\" \"{spd_filename}\""
+    tempfiles.append(spd_filename)
+    logging.info("changing speed with the following command")
+    logging.info(spdcommand)
+    os.system(spdcommand)
+    filein = spd_filename
+
+    # start interpolation
+    if interpolate and not audioonly:
+        if send_notifs:
+            notif_interpolate.send()
+        print(f"\n{strbold}{titlecolour}Interpolating...{strreset}")
+        itpl_filename = f"{tempdir}/itpl_{launchtime}.{container}"
+        itplcommand = f"{executable} -y -i \"{filein}\" -filter:v \"minterpolate='mi_mode=mci:mc_mode=obmc:fps={target_fps}'\" \"{itpl_filename}\""
+        tempfiles.append(itpl_filename)
+        logging.info("interpolating with the following command")
+        logging.info(itplcommand)
+        os.system(itplcommand)
+        filein = itpl_filename
 
 # figure out valid file name
 fullname = targetfilename.split("/")
@@ -972,6 +1100,18 @@ elif loud:
     logging.info(amplifycmd)
     os.system(amplifycmd)
     filein = amp_filename
+
+if reverb and not mute:
+    print(f"\n{strbold}{titlecolour}Adding reverb...{strreset}")
+    if send_notifs:
+        notif_reverb.send()
+    rvb_filename = f"{tempdir}/rvb_{launchtime}.{container}"
+    rvbcmd = f"{executable} -y -i \"{filein}\" -af aecho=1.0:0.3:35:1,bass=g=2 \"{rvb_filename}\""
+    tempfiles.append(rvb_filename)
+    logging.info("adding reverb with the following command:")
+    logging.info(rvbcmd)
+    os.system(rvbcmd)
+    filein = rvb_filename
 
 targetSizeKB = target_size * bitrate_multiplier
 logging.info("target size: "+str(targetSizeKB)+"KB")
