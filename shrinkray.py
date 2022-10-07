@@ -262,7 +262,7 @@ if not os.path.isdir("download"):
     os.mkdir("download")
 
 # don't edit
-version = "1.6.2.1"
+version = "1.6.3"
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
@@ -502,11 +502,11 @@ def printsizes(size1, size2):
     print()
     print(f"{titlecolour}before:")
     print(f"    {numbercolour}{round(size1)}{unitcolour}kB{strwhite}, {numbercolour}{round(kibiconvert(size1))}{unitcolour}kiB")
-    print(f"    {numbercolour}{round(size1)/1000}{unitcolour}MB{strwhite}, {numbercolour}{mebiconvert(size1)}{unitcolour}MiB")
+    print(f"    {numbercolour}{round(size1/10)/100}{unitcolour}MB{strwhite}, {numbercolour}{mebiconvert(size1)}{unitcolour}MiB")
     print()
     print(f"{strbold}{titlecolour}after:")
     print(f"    {numbercolour}{round(size2)}{unitcolour}kB{strwhite}, {numbercolour}{round(kibiconvert(size2))}{unitcolour}kiB")
-    print(f"    {numbercolour}{round(size2)/1000}{unitcolour}MB{strwhite}, {numbercolour}{mebiconvert(size2)}{unitcolour}MiB")
+    print(f"    {numbercolour}{round(size2/10)/100}{unitcolour}MB{strwhite}, {numbercolour}{mebiconvert(size2)}{unitcolour}MiB")
     print(strreset)
     shrinkness = round(((size1/size2)-1)*100)
     print(f"{titlecolour}{strbold}Shrink percentage: {othercolour}{shrinkness}%{strreset}")
