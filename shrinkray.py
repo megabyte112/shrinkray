@@ -436,9 +436,7 @@ logging.info(f"output: {out_count}")
 clearscreen("Waiting for input...", stryellow)
 
 logging.info("args: " + str(sys.argv))
-logging.info("audioratio: "+str(audioratio))
 logging.info("wait: "+str(wait_when_done))
-logging.info("bitrate_multiplier: "+str(bitrate_multiplier))
 
 logging.info("initialization complete")
 
@@ -507,6 +505,9 @@ def CheckValidInput(text):
 def CheckValidSpeedInput(text):
     return text.isnumeric() and int(text) > 0 and int(text) <= 10
 
+def CheckValidMultiInput(text):
+    return text.isnumeric() and int(text) > 0 and int(text) <= 100
+
 def CheckValidRatioInput(text):
     text = text.split("/")
     return len(text) == 2 and text[0].isnumeric() and text[1].isnumeric() and int(text[0]) < int(text[1])
@@ -532,6 +533,18 @@ def GetTargetSize():
         if 'k' in text:
             return text[0:len(text)-1]
     return text + "000"
+
+def GetBitrateMultiplier():
+    global bitrate_multiplier
+    text = "abc"
+    while not CheckValidMultiInput(text):
+        text = input(f"\n{strbold}{askcolour}Bitrate multiplier {strreset}[as percentage, like 95]\n> ")
+        if text == "":
+            return bitrate_multiplier*100.0
+        if not CheckValidMultiInput(text):
+            logging.warning("rejected input: "+str(text))
+            print(f"\n{errorcolour}Make sure your input a whole number!{strreset}")
+    return text
 
 def GetAudioRatio():
     text = "0"
@@ -771,12 +784,11 @@ if arg_length < 2:
         if GetAdvancedOptionsChoice():
             print(f"\n{errorcolour}{strbold}Warning: Changing these may result in errors and crashes.{strreset}")
             speed = int(GetSpeed())
+            bitrate_multiplier = float(GetBitrateMultiplier())/100.0
             if audioonly:
                 audiocontainer = GetAudioContainer()
                 audio_codec = GetAudioCodec()
             else:
-                if playbackspeed != 1.0:
-                    interpolate = GetInterpolateChoice()
                 container = GetVideoContainer()
                 video_codec = GetVideoCodec()
             if not audioonly and not meme_mode:
@@ -784,16 +796,18 @@ if arg_length < 2:
                 max_audio_bitrate = int(GetMaxAudioBitrate())
                 max_res_size = int(GetMaxRes())
                 target_fps = int(GetMaxFramerate())
+                interpolate = GetInterpolateChoice()
 
     logging.info("trim: "+str(trim))
     logging.info("audioonly: "+str(audioonly))
     logging.info("mute: "+str(mute))
-    logging.info("speed: "+str(speed))
     logging.info("notifs: "+str(send_notifs))
     logging.info("open filemgr: "+str(open_when_done))
     logging.info("meme: "+str(meme_mode))
     logging.info("loud: "+str(loud))
     logging.info("reverb: "+str(reverb))
+    logging.info("speed: "+str(speed))
+    logging.info("bitratemulti: "+str(bitrate_multiplier))
     logging.info("playbackspeed: "+str(playbackspeed))
     logging.info("interpolate: "+str(interpolate))
     logging.info("text: "+str(dotext))
@@ -898,12 +912,11 @@ else:
         if GetAdvancedOptionsChoice():
             print(f"\n{errorcolour}{strbold}Warning: Changing these may result in errors and crashes.{strreset}")
             speed = int(GetSpeed())
+            bitrate_multiplier = float(GetBitrateMultiplier())/100.0
             if audioonly:
                 audiocontainer = GetAudioContainer()
                 audio_codec = GetAudioCodec()
             else:
-                if playbackspeed != 1.0:
-                    interpolate = GetInterpolateChoice()
                 container = GetVideoContainer()
                 video_codec = GetVideoCodec()
             if not audioonly and not meme_mode:
@@ -911,16 +924,18 @@ else:
                 max_audio_bitrate = int(GetMaxAudioBitrate())
                 max_res_size = int(GetMaxRes())
                 target_fps = int(GetMaxFramerate())
+                interpolate = GetInterpolateChoice()
 
     logging.info("trim: "+str(trim))
     logging.info("audioonly: "+str(audioonly))
     logging.info("mute: "+str(mute))
-    logging.info("speed: "+str(speed))
     logging.info("notifs: "+str(send_notifs))
     logging.info("open filemgr: "+str(open_when_done))
     logging.info("meme: "+str(meme_mode))
     logging.info("loud: "+str(loud))
     logging.info("reverb: "+str(reverb))
+    logging.info("speed: "+str(speed))
+    logging.info("bitratemulti: "+str(bitrate_multiplier))
     logging.info("playbackspeed: "+str(playbackspeed))
     logging.info("interpolate: "+str(interpolate))
     logging.info("text: "+str(dotext))
@@ -990,6 +1005,7 @@ if not mute:
     logging.info("fetching sample rate with the following command")
     logging.info(getratecmd)
     samplerate = float(subprocess.getoutput(getratecmd))
+    logging.info(f"audio is {samplerate}Hz")
 
 # playback speed
 if playbackspeed != 1.0:
