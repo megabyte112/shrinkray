@@ -1013,7 +1013,7 @@ if playbackspeed != 1.0:
     if send_notifs:
         notif_spd.send()
     print(f"\n{strbold}{titlecolour}Recoding at {othercolour}{playbackspeed}x{titlecolour} speed...{strreset}")
-    print(f"{othercolour}(the progress bar may disappear, or not fully complete){strreset}")
+    print(f"{othercolour}(the progress bar may disappear or not fully complete){strreset}")
     spd_filename = f"{tempdir}/spd_{launchtime}.{container}"
     spdmult = 1.0/playbackspeed
     if audioonly:
