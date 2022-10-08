@@ -775,10 +775,10 @@ if arg_length < 2:
                 audiocontainer = GetAudioContainer()
                 audio_codec = GetAudioCodec()
             else:
-                container = GetVideoContainer()
-                video_codec = GetVideoCodec()
                 if playbackspeed != 1.0:
                     interpolate = GetInterpolateChoice()
+                container = GetVideoContainer()
+                video_codec = GetVideoCodec()
             if not audioonly and not meme_mode:
                 audioratio = float(GetAudioRatio())
                 max_audio_bitrate = int(GetMaxAudioBitrate())
@@ -902,10 +902,10 @@ else:
                 audiocontainer = GetAudioContainer()
                 audio_codec = GetAudioCodec()
             else:
-                container = GetVideoContainer()
-                video_codec = GetVideoCodec()
                 if playbackspeed != 1.0:
                     interpolate = GetInterpolateChoice()
+                container = GetVideoContainer()
+                video_codec = GetVideoCodec()
             if not audioonly and not meme_mode:
                 audioratio = float(GetAudioRatio())
                 max_audio_bitrate = int(GetMaxAudioBitrate())
@@ -1011,18 +1011,30 @@ if playbackspeed != 1.0:
     os.system(spdcommand)
     filein = spd_filename
 
-    # start interpolation
-    if interpolate and not audioonly:
-        if send_notifs:
-            notif_interpolate.send()
-        print(f"\n{strbold}{titlecolour}Interpolating...{strreset}")
-        itpl_filename = f"{tempdir}/itpl_{launchtime}.{container}"
-        itplcommand = f"{executable} -y -i \"{filein}\" -filter:v \"minterpolate='mi_mode=mci:mc_mode=obmc:fps={target_fps}'\" \"{itpl_filename}\""
-        tempfiles.append(itpl_filename)
-        logging.info("interpolating with the following command")
-        logging.info(itplcommand)
-        os.system(itplcommand)
-        filein = itpl_filename
+# get fps
+if not audioonly:
+    if meme_mode:
+        target_fps = 10
+    fpscmd = f"ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate \"{filein}\""
+    logging.info("fetching framerate with the following command")
+    logging.info(fpscmd)
+    fullfps = subprocess.getoutput(fpscmd).split("/")
+    fps = float(int(fullfps[0])/int(fullfps[1]))
+    logging.info(f"video is {fps}fps")
+    lowerfps = fps > target_fps
+
+# start interpolation
+if interpolate and not audioonly and not meme_mode and fps < target_fps:
+    if send_notifs:
+        notif_interpolate.send()
+    print(f"\n{strbold}{titlecolour}Interpolating...{strreset}")
+    itpl_filename = f"{tempdir}/itpl_{launchtime}.{container}"
+    itplcommand = f"{executable} -y -i \"{filein}\" -filter:v \"minterpolate='mi_mode=mci:mc_mode=obmc:fps={target_fps}'\" \"{itpl_filename}\""
+    tempfiles.append(itpl_filename)
+    logging.info("interpolating with the following command")
+    logging.info(itplcommand)
+    os.system(itplcommand)
+    filein = itpl_filename
 
 # figure out valid file name
 fullname = targetfilename.split("/")
@@ -1163,18 +1175,6 @@ logging.info(lencmd)
 length = math.ceil(float(subprocess.getoutput(lencmd)))
 logging.info(f"video length: {length}s")
 totalbitrate=targetSizeKB*8/length
-
-# get fps
-if not audioonly:
-    if meme_mode:
-        target_fps = 10
-    fpscmd = f"ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate \"{filein}\""
-    logging.info("fetching framerate with the following command")
-    logging.info(fpscmd)
-    fullfps = subprocess.getoutput(fpscmd).split("/")
-    fps = float(int(fullfps[0])/int(fullfps[1]))
-    logging.info(f"video is {fps}fps")
-    lowerfps = fps > target_fps
 
 # split into audio and video
 if audioonly:
