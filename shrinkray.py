@@ -2,7 +2,6 @@
 # https://github.com/megabyte112/shrinkray
 # see LICENSE for license info
 
-
 ### ----------[~~Settings~~]---------- ###
 
 # Here you can find advanced settings for shrinkray.
@@ -218,7 +217,6 @@ preferred_vcodecs = {
 
 # Everything below this point is actual code.
 # Only edit if you know exactly what you're doing.
-
 
 
 # okay, let's do this.
@@ -1041,32 +1039,6 @@ if not audioonly:
     logging.info(f"video is {fps}fps")
     lowerfps = fps > target_fps
 
-# start interpolation
-if interpolate and not audioonly and not meme_mode and fps < target_fps:
-    if send_notifs:
-        notif_interpolate.send()
-    print(f"\n{strbold}{titlecolour}Interpolating...{strreset}")
-    itpl_filename = f"{tempdir}/itpl_{launchtime}.{container}"
-    itplcommand = f"{executable} -y -i \"{filein}\" -filter:v \"minterpolate='mi_mode=mci:mc_mode=obmc:fps={target_fps}'\" \"{itpl_filename}\""
-    tempfiles.append(itpl_filename)
-    logging.info("interpolating with the following command")
-    logging.info(itplcommand)
-    os.system(itplcommand)
-    filein = itpl_filename
-
-# figure out valid file name
-fullname = targetfilename.split("/")
-fullname = fullname[len(fullname)-1].split("\\")
-name = fullname[len(fullname)-1].split(".")
-if len(name) == 1:
-    fileout = "output/"+name+suffix+"."+container
-else:
-    name.pop(len(name)-1)
-    newname = ""
-    for eachitem in name:
-        newname+=eachitem
-    fileout = "output/"+newname+suffix+"."+container
-
 # get resolution
 doScale = False
 if not audioonly:
@@ -1089,6 +1061,42 @@ if not audioonly:
     if width > max_res_size or height > max_res_size:
         doScale = True
         logging.info("scaling will be needed")
+
+# start interpolation
+if interpolate and not audioonly and not meme_mode and fps < target_fps:
+    if doScale:
+        if orientation == 'p':
+            scale = max_res_size / height
+            newres = str(round((width*scale)/2)*2)+":"+str(max_res_size)
+        else:
+            scale = max_res_size / width
+            newres = str(max_res_size)+":"+str(round((height*scale)/2)*2)
+        scalearg = f"scale={newres},"
+    else:
+        scalearg = ""
+    if send_notifs:
+        notif_interpolate.send()
+    print(f"\n{strbold}{titlecolour}Interpolating...{strreset}")
+    itpl_filename = f"{tempdir}/itpl_{launchtime}.{container}"
+    itplcommand = f"{executable} -y -i \"{filein}\" -filter:v \"{scalearg}minterpolate='mi_mode=mci:mc_mode=obmc:fps={target_fps}'\" \"{itpl_filename}\""
+    tempfiles.append(itpl_filename)
+    logging.info("interpolating with the following command")
+    logging.info(itplcommand)
+    os.system(itplcommand)
+    filein = itpl_filename
+
+# figure out valid file name
+fullname = targetfilename.split("/")
+fullname = fullname[len(fullname)-1].split("\\")
+name = fullname[len(fullname)-1].split(".")
+if len(name) == 1:
+    fileout = "output/"+name+suffix+"."+container
+else:
+    name.pop(len(name)-1)
+    newname = ""
+    for eachitem in name:
+        newname+=eachitem
+    fileout = "output/"+newname+suffix+"."+container
 
 # add text if requested
 if dotext:
