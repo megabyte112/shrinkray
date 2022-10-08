@@ -18,12 +18,12 @@ This includes an audio-only mode where only the audio is encoded, and a "meme mo
 # Usage
 ### If you are downloading a video:
  
- Open shrinkray, paste the video link, and wait for the magic to happen.
+ Open shrinkray, paste the video link, answer the questions on screen, and wait for the magic to happen.
 
 
 ### If you already have a video:
  
-Drag the video onto the shrinkray file, and wait for the magic to happen.
+Drag the video onto the shrinkray file, answer the questions on screen, and wait for the magic to happen.
 
 # Installation
  See installation instructions on the [Wiki](https://github.com/megabyte112/shrinkray/wiki/Installation).
