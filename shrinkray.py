@@ -1183,9 +1183,9 @@ if (size < targetSizeKB or targetSizeKB == 0) and not meme_mode:
         
         printsizes(originalsize, newdisplaysize)
     else:
-        print(f"\n{strgreen}{strbold}The file is already small enough!{strreset}")
+        print(f"\n{strgreen}{strbold}Shrinking was not needed.{strreset}")
         printsizes(originalsize, newdisplaysize)
-        print("It has been copied to the output folder.")
+        print("Check the output folder for your file.")
         if open_when_done:
             showinfm.show_in_file_manager(fileout)
     logging.info("complete!")
