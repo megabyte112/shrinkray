@@ -6,7 +6,8 @@
 ### ----------[~~Settings~~]---------- ###
 
 # Here you can find advanced settings for shrinkray.
-# Lines prefixed with a hash (#) are comments and are ignored by code.
+# Lines prefixed with a hash (#) are comments and are ignored by the interpreter.
+# Most of these are defaults: you can override them at runtime.
 # All booleans (True/False) must have the first letter capitalized.
 
 ## ----[General]---- ##
@@ -62,6 +63,7 @@ warning_threshhold = 100
 max_res_size = 1280
 
 # framerate limit.
+# this is also the framerate that the video can be interpolated to.
 # default: 30
 target_fps = 30
 
@@ -241,7 +243,7 @@ tempdir = "temp/"+str(launchtime)
 os.mkdir(tempdir)
 
 # don't edit
-version = "1.6.3"
+version = "1.7"
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
