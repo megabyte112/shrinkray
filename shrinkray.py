@@ -672,7 +672,7 @@ def CheckValidSpeedFloat(text):
         a = float(text)
     except ValueError:
         return False
-    if a > 0.0 and a <= 2.0:
+    if a >= 0.5 and a <= 2.0:
         return True
     return False
 
@@ -685,12 +685,12 @@ def GetPlaybackSpeed():
             return playbackspeed
         if not CheckValidSpeedFloat(text):
             logging.warning("rejected input: "+str(text))
-            print(f"\n{errorcolour}Make sure your input is a decimal number greater than 0 and less than or equal to 2.0.{strreset}")
+            print(f"\n{errorcolour}Make sure your input is a decimal number between 0.5 and 2.0.{strreset}")
     return text
 
 def GetOpenWhenDoneChoice():
     global open_when_done
-    text = input(f"\n{strbold}{askcolour}Open file manger when completed?{strreset} [Y/N]\n> ")
+    text = input(f"\n{strbold}{askcolour}Open file manager when completed?{strreset} [Y/N]\n> ")
     if text.lower() == "n":
         return False
     elif text.lower() == "y":
