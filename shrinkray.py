@@ -490,8 +490,8 @@ def printsizes(size1, size2):
     print(f"    {numbercolour}{round(size2)}{unitcolour}kB{strwhite}, {numbercolour}{round(kibiconvert(size2))}{unitcolour}kiB")
     print(f"    {numbercolour}{round(size2/10)/100}{unitcolour}MB{strwhite}, {numbercolour}{mebiconvert(size2)}{unitcolour}MiB")
     print(strreset)
-    shrinkness = round(((size1/size2)-1)*100)
-    print(f"{titlecolour}{strbold}Shrink percentage: {othercolour}{shrinkness}%{strreset}")
+    shrinkness = round((size1/size2)*100)/100
+    print(f"{titlecolour}{strbold}Output is {othercolour}{shrinkness}x{titlecolour} smaller.{strreset}")
     print()
 
 def CheckValidSizeInput(text):
