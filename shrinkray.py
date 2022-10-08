@@ -241,7 +241,7 @@ tempdir = "temp/"+str(launchtime)
 os.mkdir(tempdir)
 
 # don't edit
-version = "1.7.2"
+version = "1.7.3"
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
@@ -881,6 +881,7 @@ if arg_length < 2:
 else:
     # if user is supplying file
     filein=sys.argv[1]
+    targetfilename = filein
     logging.info("target file "+filein)
     target_size = int(GetTargetSize())
     logging.info("target (in kB): "+str(target_size))
