@@ -243,7 +243,7 @@ tempdir = "temp/"+str(launchtime)
 os.mkdir(tempdir)
 
 # don't edit
-version = "1.7"
+version = "1.7.1"
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
