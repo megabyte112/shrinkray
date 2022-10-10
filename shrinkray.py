@@ -1064,7 +1064,7 @@ if not audioonly:
         logging.info("scaling will be needed")
 
 # start interpolation
-if interpolate and not audioonly and not meme_mode and fps < target_fps:
+if interpolate and not audioonly and not meme_mode and fps*playbackspeed < float(target_fps):
     if doScale:
         if orientation == 'p':
             scale = max_res_size / height
