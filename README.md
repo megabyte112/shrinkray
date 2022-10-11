@@ -5,13 +5,13 @@
 ![GitHub all releases](https://img.shields.io/github/downloads/megabyte112/shrinkray/total?style=for-the-badge)
 
 
- A tool for shrinking videos to be under a user-defined size.
+ A tool for downloading videos, and compressing them to be below a certain size.
  
- This was originally intended for shrinking videos to be under 8MB so that they can be sent in Discord, but can be used for anything requiring video compression.
- It can also download videos from many sites, including YouTube and Reddit.
+ This was originally intended for shrinking videos to be under 8MB so that they can be sent in Discord, but can be used for anything requiring video downloads. You don't have to compress - just enter 0 as a target file size.
+ It can download videos from many sites, including YouTube and Reddit.
  
-There are many settings within the Python file that area available to edit, to customise shrinkray to the user's needs.
-This includes an audio-only mode where only the audio is encoded, and a "meme mode", where videos are encoded at a comically low bitrate.
+There are many customizable options for the user to edit, as well configurable default values within the Python file itself, to customise shrinkray to the user's needs.
+You can change parameters from the framerate, whether to only output audio, or even changing the colours of the UI itself.
 
 ![image](https://user-images.githubusercontent.com/74556753/188287782-758e0f62-f22e-4060-85db-f7c224c2c0d9.png)
 
