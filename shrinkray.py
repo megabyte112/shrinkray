@@ -1004,13 +1004,13 @@ logging.info(lencmd)
 length = math.ceil(float(subprocess.getoutput(lencmd)))
 logging.info(f"video length: {length}s")
 totalbitrate=targetSizeKB*8/length
-if trim and end_time == -1:
-    end_time = length
 
 # trim
 if trim:
     if send_notifs:
         notif_trim.send()
+    if end_time == -1:
+        end_time = length
     print(f"\n{strbold}{titlecolour}Trimming between {othercolour}{start_time}{titlecolour} and {othercolour}{end_time}{titlecolour}...{strreset}")
     print(f"{othercolour}(the progress bar may not fully complete){strreset}")
     trim_filename = f"{tempdir}/trim_{launchtime}.{container}"
@@ -1049,6 +1049,7 @@ if playbackspeed != 1.0:
     logging.info(spdcommand)
     os.system(spdcommand)
     filein = spd_filename
+    length = math.ceil(length/playbackspeed)
 
 # get fps
 if not audioonly:
@@ -1183,6 +1184,9 @@ if (size < targetSizeKB or targetSizeKB == 0) and not meme_mode:
     # delete temp files
     shutil.rmtree(tempdir)
 
+    if countfiles("temp") == 0:
+        os.rmdir("temp")
+
     clearscreen("Complete!", strgreen)
 
     if send_notifs:
@@ -1309,6 +1313,9 @@ else:
 
 # delete temp files
 shutil.rmtree(tempdir)
+
+if countfiles("temp") == 0:
+    os.rmdir("temp")
 
 # done!
 clearscreen("Complete!", strgreen)
