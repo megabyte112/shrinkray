@@ -53,7 +53,7 @@ send_notifs = True
 # these folders can eventually reach very large file sizes.
 # set to None to disable.
 # default: 100
-warning_threshhold = 100
+warning_threshold = 100
 
 ## -----[Video]----- ##
 
@@ -241,7 +241,7 @@ tempdir = "temp/"+str(launchtime)
 os.mkdir(tempdir)
 
 # don't edit
-version = "1.7.3"
+version = "1.7.4"
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
@@ -288,6 +288,7 @@ except ImportError:
     "--exists-action","i"])
     import ffpb, yt_dlp, notifypy, showinfm, colorama
     earlyclearscreen()
+    logging.info("done deps, closing")
     print("\nDependencies have been installed,\nPlease restart shrinkray.")
     if wait_when_done:
         input("\nPress Enter to close.")
@@ -436,7 +437,8 @@ logging.info(f"output: {out_count}")
 clearscreen("Waiting for input...", stryellow)
 
 logging.info("args: " + str(sys.argv))
-logging.info("wait: "+str(wait_when_done))
+logging.info("wait when done: "+str(wait_when_done))
+logging.info("count threshold: "+str(warning_threshold))
 
 logging.info("initialization complete")
 
@@ -444,28 +446,27 @@ logging.info("initialization complete")
 # we're running!!
 print(f"\n{titlecolour}Welcome back to {strbold}shrinkray{strreset}.")
 
-logging.info(f"shrinkray {version} is running")
+logging.info(f"shrinkray {version} is running!")
 logging.info("tell megabyte112 about any issues :)")
 
-if meme_mode and not ask_meme:
-    ask_size = False
+if meme_mode:
     print(f"\n{strbold}{errorcolour}haha shitpost shrinkray go brrrrrrrrr")
-    print(f"(meme mode is active){strreset}")
-if audioonly and not ask_audio:
-    print(f"\n{strbold}{errorcolour}WARNING: Output will be audio only!{strreset}")
-elif mute and not ask_mute:
-    print(f"\n{strbold}{errorcolour}WARNING: Video will be muted!{strreset}")
-if loud and not ask_loud and not mute:
+    print(f"(meme mode is active by default){strreset}")
+if audioonly:
+    print(f"\n{strbold}{errorcolour}WARNING: Output will be audio only by default!{strreset}")
+elif mute:
+    print(f"\n{strbold}{errorcolour}WARNING: Video will be muted by default!{strreset}")
+if loud and not mute:
     print(f"\n{strbold}{errorcolour}i hope your ears are okay")
-    print(f"(loud mode enabled){strreset}")
+    print(f"(loud mode enabled by default){strreset}")
 
-if warning_threshhold is not None:
+if warning_threshold is not None:
     sizewarned = False
-    if log_count >= warning_threshhold:
+    if log_count >= warning_threshold:
         sizewarned = True
         print(f"\n{errorcolour}Logs folder contains {log_count} items!")
         print(f"Consider clearing it once shrinkray is closed.{strreset}")
-    if out_count >= warning_threshhold:
+    if out_count >= warning_threshold:
         sizewarned = True
         print(f"\n{errorcolour}Output folder contains {out_count} items!")
         print(f"Consider clearing it once shrinkray is closed.{strreset}")
@@ -761,17 +762,21 @@ if arg_length < 2:
         if trim:
             start_time = input(f"\n{strbold}{askcolour}Start time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
             end_time = input(f"\n{strbold}{askcolour}End time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
+            if start_time == "":
+                start_time = 0
+            if end_time == "":
+                end_time = -1
             logging.info(f"time range between {start_time} and {end_time}")
         audioonly = GetAudioChoice()
         if not audioonly:
             mute = GetMuteChoice()
-        send_notifs = GetNotifChoice()
-        open_when_done = GetOpenWhenDoneChoice()
         meme_mode = GetMemeChoice()
         if not mute:
             loud = GetLoudChoice()
         reverb = GetReverbChoice()
         playbackspeed = float(GetPlaybackSpeed())
+        send_notifs = GetNotifChoice()
+        open_when_done = GetOpenWhenDoneChoice()
         if not audioonly:
             dotext = GetTextChoice()
         else:
@@ -801,16 +806,15 @@ if arg_length < 2:
     logging.info("trim: "+str(trim))
     logging.info("audioonly: "+str(audioonly))
     logging.info("mute: "+str(mute))
-    logging.info("notifs: "+str(send_notifs))
-    logging.info("open filemgr: "+str(open_when_done))
     logging.info("meme: "+str(meme_mode))
     logging.info("loud: "+str(loud))
     logging.info("reverb: "+str(reverb))
+    logging.info("playbackspeed: "+str(playbackspeed))
+    logging.info("notifs: "+str(send_notifs))
+    logging.info("open filemgr: "+str(open_when_done))
+    logging.info("text: "+str(dotext))
     logging.info("speed: "+str(speed))
     logging.info("bitratemulti: "+str(bitrate_multiplier))
-    logging.info("playbackspeed: "+str(playbackspeed))
-    logging.info("interpolate: "+str(interpolate))
-    logging.info("text: "+str(dotext))
     if audioonly:
         logging.info("audio container: "+str(audiocontainer))
         logging.info("audio codec: "+str(audio_codec))
@@ -821,6 +825,7 @@ if arg_length < 2:
     logging.info("max audio bitrate: "+str(max_audio_bitrate))
     logging.info("max resolution: "+str(max_res_size))
     logging.info("target fps: "+str(target_fps))
+    logging.info("interpolate: "+str(interpolate))
 
     clearscreen("Downloading...", strpurple)
 
@@ -890,17 +895,21 @@ else:
         if trim:
             start_time = input(f"\n{strbold}{askcolour}Start time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
             end_time = input(f"\n{strbold}{askcolour}End time {strreset}[hh:mm:ss] / [m:ss] / [s]\n> ")
+            if start_time == "":
+                start_time = 0
+            if end_time == "":
+                end_time = -1
             logging.info(f"time range between {start_time} and {end_time}")
         audioonly = GetAudioChoice()
         if not audioonly:
             mute = GetMuteChoice()
-        send_notifs = GetNotifChoice()
-        open_when_done = GetOpenWhenDoneChoice()
         meme_mode = GetMemeChoice()
         if not mute:
             loud = GetLoudChoice()
         reverb = GetReverbChoice()
         playbackspeed = float(GetPlaybackSpeed())
+        send_notifs = GetNotifChoice()
+        open_when_done = GetOpenWhenDoneChoice()
         if not audioonly:
             dotext = GetTextChoice()
         else:
@@ -930,16 +939,15 @@ else:
     logging.info("trim: "+str(trim))
     logging.info("audioonly: "+str(audioonly))
     logging.info("mute: "+str(mute))
-    logging.info("notifs: "+str(send_notifs))
-    logging.info("open filemgr: "+str(open_when_done))
     logging.info("meme: "+str(meme_mode))
     logging.info("loud: "+str(loud))
     logging.info("reverb: "+str(reverb))
+    logging.info("playbackspeed: "+str(playbackspeed))
+    logging.info("notifs: "+str(send_notifs))
+    logging.info("open filemgr: "+str(open_when_done))
+    logging.info("text: "+str(dotext))
     logging.info("speed: "+str(speed))
     logging.info("bitratemulti: "+str(bitrate_multiplier))
-    logging.info("playbackspeed: "+str(playbackspeed))
-    logging.info("interpolate: "+str(interpolate))
-    logging.info("text: "+str(dotext))
     if audioonly:
         logging.info("audio container: "+str(audiocontainer))
         logging.info("audio codec: "+str(audio_codec))
@@ -950,6 +958,7 @@ else:
     logging.info("max audio bitrate: "+str(max_audio_bitrate))
     logging.info("max resolution: "+str(max_res_size))
     logging.info("target fps: "+str(target_fps))
+    logging.info("interpolate: "+str(interpolate))
 
 target_size = float(target_size)
 clearscreen("Running...", strblue)
@@ -984,6 +993,19 @@ if fileincontain != container and (force_container or audioonly):
     logging.info(convertcommand)
     os.system(convertcommand)
     filein = convert_filename
+
+# bitrate (in Mbps) = Size / Length
+# divide target size by length in seconds
+targetSizeKB = target_size * bitrate_multiplier
+logging.info("target size: "+str(targetSizeKB)+"KB")
+lencmd = f"ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{filein}\""
+logging.info("fetching length with the following command")
+logging.info(lencmd)
+length = math.ceil(float(subprocess.getoutput(lencmd)))
+logging.info(f"video length: {length}s")
+totalbitrate=targetSizeKB*8/length
+if trim and end_time == -1:
+    end_time = length
 
 # trim
 if trim:
@@ -1152,9 +1174,6 @@ if reverb and not mute:
     os.system(rvbcmd)
     filein = rvb_filename
 
-targetSizeKB = target_size * bitrate_multiplier
-logging.info("target size: "+str(targetSizeKB)+"KB")
-
 # calculate size: no need to shrink if file is already small enough
 size=os.path.getsize(filein)/1000   # in kB
 logging.info(f"size of input file: {size}kB (originally {originalsize}kB)")
@@ -1178,7 +1197,7 @@ if (size < targetSizeKB or targetSizeKB == 0) and not meme_mode:
         logging.info(f"expected {expected}kB, got {newdisplaysize}kB.")
         print(f"\n{strbold}{errorcolour}Congratulations, it seems like you have broken shrinkray.")
         print(f"Something happened that shouldn't be possible.")
-        print(f"Please open a GitHub issue, providing log, so that I can fix this.")
+        print(f"Please open a GitHub issue, providing the latest log, so that I can fix this.")
         print(f"https://github.com/megabyte112/shrinkray/issues{strreset}")
         
         printsizes(originalsize, newdisplaysize)
@@ -1193,15 +1212,6 @@ if (size < targetSizeKB or targetSizeKB == 0) and not meme_mode:
     if wait_when_done:
         input(f"\nYou can now press {strbold}[Enter]{strunbold} or {strbold}close this window{strunbold} to exit.")
     sys.exit()
-
-# bitrate (in Mbps) = Size / Length
-# divide target size by length in seconds
-lencmd = f"ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{filein}\""
-logging.info("fetching length with the following command")
-logging.info(lencmd)
-length = math.ceil(float(subprocess.getoutput(lencmd)))
-logging.info(f"video length: {length}s")
-totalbitrate=targetSizeKB*8/length
 
 # split into audio and video
 if audioonly:
