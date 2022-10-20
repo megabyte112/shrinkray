@@ -34,6 +34,7 @@ trim = False
 
 # default shrinking speed, a number between 1 and 10, higher is faster.
 # lower speeds lead to more accurate file sizes.
+# set to 0 to disable ffmpeg speed presets.
 # default: 5
 speed = 5
 
@@ -66,18 +67,11 @@ max_res_size = 1280
 # default: 30
 target_fps = 30
 
-# force ffmpeg to use the chosen container and codec.
-# setting this to False can cause issues such as failure or a broken progress bar.
-# default: True
-force_container = True
-
 # container to contain video files.
-# only used when force_container is True.
 # default: "mp4"
 container = "mp4"
 
 # video codec to use.
-# only used when force_container is True.
 # default: "libx264"
 video_codec = "libx264"
 
@@ -112,10 +106,9 @@ audiocontainer = "mp3"
 # default: "libmp3lame"
 audio_codec = "libmp3lame"
 
-# if you want some good quality audio with a small
-# file size you can try setting the audio container to "opus" and
-# setting the audio codec to "libopus", however opus is
-# not compatible with many programs at this time.
+# if you want some good quality audio with a small file size, you can try
+# setting the audio container to "opus" and setting the audio codec to "libopus".
+# however, opus is not compatible with many programs at this time.
 
 ## ----[Colours]---- ##
 # or 'colors', whatever.
@@ -199,20 +192,6 @@ bass_multiplier = 2
 # default: 64
 crunchiness = 64
 
-## -----[Codecs]----- ##
-
-# the preferred codecs to use for each container.
-# only applies when force_container is False.
-# don't mess with this if you don't know what you're doing.
-
-preferred_vcodecs = {
-    "mp4":"libx264",
-    "mov":"libx264",
-    "webm":"libvpx-vp9",
-    "avi":"libvpx-vp9",
-    "opus":"libopus"
-}
-
 ### -------[~~End of Settings~~]------- ###
 
 # Everything below this point is actual code.
@@ -241,7 +220,7 @@ tempdir = "temp/"+str(launchtime)
 os.mkdir(tempdir)
 
 # don't edit
-version = "1.7.4"
+version = "1.7.5"
 
 # setup logger
 logformat='%(asctime)s: %(message)s'
@@ -491,8 +470,8 @@ def printsizes(size1, size2):
     print(f"    {numbercolour}{round(size2)}{unitcolour}kB{strwhite}, {numbercolour}{round(kibiconvert(size2))}{unitcolour}kiB")
     print(f"    {numbercolour}{round(size2/10)/100}{unitcolour}MB{strwhite}, {numbercolour}{mebiconvert(size2)}{unitcolour}MiB")
     print(strreset)
-    shrinkness = round((size1/size2)*100)/100
-    print(f"{titlecolour}{strbold}Output is {othercolour}{shrinkness}x{titlecolour} smaller.{strreset}")
+    shrinkness = round((size2/size1)*1000)/1000
+    print(f"{titlecolour}{strbold}File is {othercolour}{shrinkness}x{titlecolour} the original size.{strreset}")
     print()
 
 def CheckValidSizeInput(text):
@@ -504,7 +483,7 @@ def CheckValidInput(text):
     return text.isnumeric() and int(text) > 0
 
 def CheckValidSpeedInput(text):
-    return text.isnumeric() and int(text) > 0 and int(text) <= 10
+    return text.isnumeric() and int(text) >= 0 and int(text) <= 10
 
 def CheckValidMultiInput(text):
     return text.isnumeric() and int(text) > 0 and int(text) <= 100
@@ -561,7 +540,7 @@ def GetAudioRatio():
 
 # ask for speed
 def GetSpeed():
-    text = "0"
+    text = "123"
     while not CheckValidSpeedInput(text):
         text = input(f"\n{strbold}{askcolour}Encoding speed{strreset} [1-10]\n> ")
         if text == "":
@@ -750,12 +729,31 @@ def GetMuteChoice():
         return True
     return mute
 
+music_sites = [
+    "music.youtube.com",
+    "bandcamp.com",
+    "soundcloud.com",
+    "spotify.com",
+    "deezer.com"
+]
+
 # download video if no arguments are given
 if arg_length < 2:
     logging.info("prepare download...")
     url=input(f"\n{strbold}{askcolour}Paste a video link.{strreset}\n> ")
     logging.info(f"input: \"{url}\"")
+    audiosite = False
+    for site in music_sites:
+        if site in url:
+            audiosite = True
+    if audiosite:
+        logging.info("links to audio site")
+        print(f"\n{othercolour}This URL links to a music site, your download will be audio-only.{strreset}")
+        audioonly = True
+        container = audiocontainer
     target_size = int(GetTargetSize())
+    if not audiosite:
+        audioonly = GetAudioChoice()
     logging.info("target (in kB): "+str(target_size))
     if GetMoreOptionsChoice():
         trim = GetTrimChoice()
@@ -767,7 +765,6 @@ if arg_length < 2:
             if end_time == "":
                 end_time = -1
             logging.info(f"time range between {start_time} and {end_time}")
-        audioonly = GetAudioChoice()
         if not audioonly:
             mute = GetMuteChoice()
         meme_mode = GetMemeChoice()
@@ -854,13 +851,15 @@ if arg_length < 2:
         print(f"\n{othercolour}{strbold}you rickroll me, i rickroll you{strreset}")
 
     # if using youtube, assume mp4 to save time
-    if force_container and container == "mp4" and ("youtube.com" in url or "youtu.be" in url or "ytsearch:" in url):
+    if container == "mp4" and ("youtube.com" in url or "youtu.be" in url or "ytsearch:" in url):
         logging.info("assuming mp4 download")
         typearg = "-f mp4 "
+    elif audioonly:
+        typearg = "-x "
     else:
         typearg = ""
 
-    # find filename
+    # find filename extension
     getfilenamecmd = f"yt-dlp \"{url}\" --get-filename --no-playlist --no-warnings {typearg}-o \"{tempdir}/{title}.%(ext)s\""
     logging.info("fetching filename with the following command")
     logging.info(getfilenamecmd)
@@ -868,6 +867,7 @@ if arg_length < 2:
     logging.info("filename: "+filein)
     splitfile = filein.split(".")
     extension = splitfile[len(splitfile)-1]
+    logging.info("extension: "+extension)
     dlname = f"{tempdir}/dl_{launchtime}.{extension}"
     targetfilename = filein
     filein = dlname
@@ -883,6 +883,7 @@ if arg_length < 2:
     logging.info("downloading with the following command")
     logging.info(dlcommand)
     os.system(dlcommand)
+    filein = tempdir + "/" + os.listdir(tempdir)[0]
 else:
     # if user is supplying file
     filein=sys.argv[1]
@@ -890,6 +891,7 @@ else:
     logging.info("target file "+filein)
     target_size = int(GetTargetSize())
     logging.info("target (in kB): "+str(target_size))
+    audioonly = GetAudioChoice()
     if GetMoreOptionsChoice():
         trim = GetTrimChoice()
         if trim:
@@ -900,7 +902,6 @@ else:
             if end_time == "":
                 end_time = -1
             logging.info(f"time range between {start_time} and {end_time}")
-        audioonly = GetAudioChoice()
         if not audioonly:
             mute = GetMuteChoice()
         meme_mode = GetMemeChoice()
@@ -964,9 +965,12 @@ target_size = float(target_size)
 clearscreen("Running...", strblue)
 
 # determine ffmpeg preset based on speed
-speeds = ["placebo", "veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"]
-preset = " -preset "+speeds[speed-1]
-logging.info(f"preset: {speeds[speed-1]}")
+if speed != 0:
+    speeds = ["placebo", "veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast", "superfast", "ultrafast"]
+    preset = " -preset "+speeds[speed-1]
+    logging.info(f"preset: {speeds[speed-1]}")
+else:
+    preset = " "
 
 originalsize = round(os.path.getsize(filein)/1000) # kB
 
@@ -982,7 +986,7 @@ else:
 splitfilein = filein.split(".")
 fileincontain = splitfilein[len(splitfilein)-1]
 filenocontain = filein[0:len(filein)-len(fileincontain)-1]
-if fileincontain != container and (force_container or audioonly):
+if fileincontain != container:
     logging.info("converting file to "+container+" with the following command")
     print(f"\n{strbold}{titlecolour}Converting to {othercolour}{container}{titlecolour}...{strreset}")
     if send_notifs:
@@ -1272,8 +1276,6 @@ else:
     audioargs = f"-b:a {audiobitrate} "
     if mute:
         audioargs = "-an "
-    if not force_container:
-        video_codec = preferred_vcodecs[container]
     if doScale:
         if lowerfps:
             fpsargs = ",fps="+str(target_fps)+" "
