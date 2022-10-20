@@ -7,8 +7,9 @@
 
  A tool for downloading videos, and compressing them to be below a certain size.
  
- This was originally intended for shrinking videos to be under 8MB so that they can be sent in Discord, but can be used for anything requiring video downloads. You don't have to compress - just enter 0 as a target file size.
- It can download videos from many sites, including YouTube and Reddit.
+ This was originally intended for shrinking videos to be under 8MB so that they can be sent in Discord, but now it's evolved into a general video downloader. You don't have to compress - just enter 0 as a target file size.
+ 
+ It can download videos from [many sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md), including YouTube and Reddit.
  
 There are many customizable options for the user to edit, as well configurable default values within the Python file itself, to customise shrinkray to the user's needs.
 You can change parameters from the framerate, whether to only output audio, or even changing the colours of the UI itself.
