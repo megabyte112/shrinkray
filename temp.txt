@@ -1,0 +1,252 @@
+# convert to correct format
+splitfilein = filein.split(".")
+fileincontain = splitfilein[len(splitfilein) - 1]
+filenocontain = filein[0:len(filein) - len(fileincontain) - 1]
+if fileincontain != videoContainer:
+    logging.info("converting file to " + videoContainer + " with the following command")
+    print(f"\n{strbold}{titlecolour}Converting to {othercolour}{videoContainer}{titlecolour}...{strreset}")
+    if sendNotifs:
+        notif_convert.send()
+    convert_filename = f"{tempdir}/conv_{launchTime}.{videoContainer}"
+    convertcommand = f"{executable} -y -i \"{filein}\"{preset} \"{convert_filename}\""
+    tempFiles.append(convert_filename)
+    logging.info(convertcommand)
+    os.system(convertcommand)
+    filein = convert_filename
+
+
+# doTrim
+if doTrim:
+    if sendNotifs:
+        notif_trim.send()
+    if end_time == -1:
+        end_time = length
+    print(
+        f"\n{strbold}{titlecolour}Trimming between {othercolour}{start_time}{titlecolour} and"
+        f" {othercolour}{end_time}{titlecolour}...{strreset}")
+    print(f"{othercolour}(the progress bar may not fully complete){strreset}")
+    trim_filename = f"{tempdir}/trim_{launchTime}.{videoContainer}"
+    trimcommand = f"{executable} -y -i \"{filein}\" -ss {start_time} -to {end_time} \"{trim_filename}\""
+    tempFiles.append(trim_filename)
+    logging.info("trimming with the following command")
+    logging.info(trimcommand)
+    os.system(trimcommand)
+    filein = trim_filename
+
+
+# playback speed
+if playbackSpeed != 1.0:
+    if sendNotifs:
+        notif_spd.send()
+    print(f"\n{strbold}{titlecolour}Recoding at {othercolour}{playbackSpeed}x{titlecolour} speed...{strreset}")
+    print(f"{othercolour}(the progress bar may disappear or not fully complete){strreset}")
+    spd_filename = f"{tempdir}/spd_{launchTime}.{videoContainer}"
+    spdmult = 1.0 / playbackSpeed
+    if audioOnly:
+        spdcommand = f"{executable} -y -i \"{filein}\" -filter:a \"asetrate={samplerate * playbackSpeed}," \
+                     f"aresample={samplerate}\" \"{spd_filename}\" "
+    elif doMute:
+        spdcommand = f"{executable} -y -i \"{filein}\" -filter:v \"setpts={spdmult}*PTS\" \"{spd_filename}\""
+    else:
+        spdcommand = f"{executable} -y -i \"{filein}\" -filter_complex \"[0:v]setpts={spdmult}*PTS[v];" \
+                     f"[0:a]asetrate={samplerate * playbackSpeed},aresample={samplerate}[a]\" -map \"[v]\" " \
+                     f"-map \"[a]\" \"{spd_filename}\" "
+    tempFiles.append(spd_filename)
+    logging.info("changing speed with the following command")
+    logging.info(spdcommand)
+    os.system(spdcommand)
+    filein = spd_filename
+    length = math.ceil(length / playbackSpeed)
+
+
+# start interpolation
+if doInterpolation and not audioOnly and not memeMode and fps * playbackSpeed < float(maxFramerate):
+    if doScale:
+        if orientation == 'p':
+            scale = maxResSize / height
+            newres = str(round((width * scale) / 2) * 2) + ":" + str(maxResSize)
+        else:
+            scale = maxResSize / width
+            newres = str(maxResSize) + ":" + str(round((height * scale) / 2) * 2)
+        scalearg = f"scale={newres},"
+    else:
+        scalearg = ""
+    if sendNotifs:
+        notif_interpolate.send()
+    print(f"\n{strbold}{titlecolour}Interpolating...{strreset}")
+    itpl_filename = f"{tempdir}/itpl_{launchTime}.{videoContainer}"
+    itplcommand = f"{executable} -y -i \"{filein}\" -filter:v \"{scalearg}minterpolate='mi_mode=mci:" \
+                  f"mc_mode=obmc:fps={maxFramerate}'\" \"{itpl_filename}\""
+    tempFiles.append(itpl_filename)
+    logging.info("interpolating with the following command")
+    logging.info(itplcommand)
+    os.system(itplcommand)
+    filein = itpl_filename
+
+
+# add text if requested
+if doText:
+    text1 = text1.replace("\"", "\\\"")
+    text1 = text1.replace("'", "\\\'")
+    text2 = text2.replace("\"", "\\\"")
+    text2 = text2.replace("'", "\\\'")
+    textheight = math.floor(width / textDivisor)
+    text_filename = f"{tempdir}/txt_{launchTime}.{videoContainer}"
+    textcmd = f"{executable} -y -i \"{filein}\" -filter_complex \"[0:v]pad=iw:ih+{textheight * 2}:0:(oh-ih)/2:" \
+              f"color=white,drawtext=text='{text1}':fontsize={math.floor(textheight * 0.75)}:x=(w-tw)/2:" \
+              f"y=({textheight}-th)/2,drawtext=text='{text2}':fontsize={math.floor(textheight * 0.75)}:x=(w-tw)/2:" \
+              f"y=h-{math.floor(textheight / 2)}-(th/2)\"{preset} \"{text_filename}\""
+    tempFiles.append(text_filename)
+    logging.info("adding text with the following command:")
+    logging.info(textcmd)
+    print(f"\n{strbold}{titlecolour}Writing text...{strreset}")
+    if sendNotifs:
+        notif_text.send()
+    os.system(textcmd)
+    filein = text_filename
+
+
+if doMute:
+    print(f"\n{strbold}{titlecolour}Removing Audio...{strreset}")
+    if sendNotifs:
+        notif_mute.send()
+    mute_filename = f"{tempdir}/mute_{launchTime}.{videoContainer}"
+    mutecmd = f"{executable} -y -i \"{filein}\" -an \"{mute_filename}\""
+    tempFiles.append(mute_filename)
+    logging.info("removing audio with the following command:")
+    logging.info(mutecmd)
+    os.system(mutecmd)
+    filein = mute_filename
+elif loudMode:
+    print(f"\n{strbold}{titlecolour}Amplifying...{strreset}")
+    if sendNotifs:
+        notif_amplify.send()
+    amp_filename = f"{tempdir}/amp_{launchTime}.{videoContainer}"
+    amplifycmd = f"{executable} -y -i \"{filein}\" {audiofilters}\"{amp_filename}\""
+    tempFiles.append(amp_filename)
+    logging.info("amplifying with the following command:")
+    logging.info(amplifycmd)
+    os.system(amplifycmd)
+    filein = amp_filename
+
+
+if doReverb and not doMute:
+    print(f"\n{strbold}{titlecolour}Adding doReverb...{strreset}")
+    if sendNotifs:
+        notif_reverb.send()
+    rvb_filename = f"{tempdir}/rvb_{launchTime}.{videoContainer}"
+    rvbcmd = f"{executable} -y -i \"{filein}\" -af aecho=1.0:0.3:35:1,bass=g=2 \"{rvb_filename}\""
+    tempFiles.append(rvb_filename)
+    logging.info("adding doReverb with the following command:")
+    logging.info(rvbcmd)
+    os.system(rvbcmd)
+    filein = rvb_filename
+
+
+# calculate size: no need to shrink if file is already small enough
+size = os.path.getsize(filein) / 1000  # in kB
+logging.info(f"size of input file: {size}kB (originally {originalsize}kB)")
+if (size < targetSizeKB or targetSizeKB == 0) and not memeMode:
+    shutil.copy(filein, fileout)
+
+    # delete temp files
+    shutil.rmtree(tempdir)
+
+    if countfiles("temp") == 0:
+        os.rmdir("temp")
+
+    clearscreen("Complete!", strgreen)
+
+    if sendNotifs:
+        notif_smallenough.send()
+    logging.info("file is already small enough")
+    newdisplaysize = os.path.getsize(fileout) / 1000  # in kB
+    newkibisize = kibiconvert(newdisplaysize)
+    logging.info(f"size of output file: {newdisplaysize}kB, or {newkibisize}kiB")
+    expected = targetSizeKB
+    if newdisplaysize > expected != 0:
+        logging.info("somehow, shrinkray went backwards.")
+        logging.info(f"expected {expected}kB, got {newdisplaysize}kB.")
+        print(f"\n{strbold}{errorcolour}Congratulations, it seems like you have broken shrinkray.")
+        print(f"Something happened that shouldn't be possible.")
+        print(f"Please open a GitHub issue, providing the latest log, so that I can fix this.")
+        print(f"https://github.com/megabyte112/shrinkray/issues{strreset}")
+
+        printsizes(originalsize, newdisplaysize)
+    else:
+        print(f"\n{strgreen}{strbold}Shrinking was not needed.{strreset}")
+        printsizes(originalsize, newdisplaysize)
+        print("Check the output folder for your file.")
+        if openInFileMgr:
+            showinfm.show_in_file_manager(fileout)
+    logging.info("complete!")
+    logging.shutdown()
+    if waitWhenDone:
+        input(f"\nYou can now press {strbold}[Enter]{strunbold} or {strbold}close this window{strunbold} to exit.")
+    sys.exit()
+
+
+if audioOnly:
+    audioargs = f"-c:a {audioCodec} -b:a {audiobitrate} {audiofilters}"
+    ffmpegcmd = f"{executable} -y -hide_banner -i \"{filein}\" {audioargs}\"{fileout}\""
+    if sendNotifs:
+        notif_audiocompress.send()
+    print(f"\n{strbold}{titlecolour}Shrinking...{strreset}")
+    logging.info("audio shrinking using the following command")
+    logging.info(ffmpegcmd)
+    os.system(ffmpegcmd)
+    logging.info("called command")
+else:
+    audioargs = f"-b:a {audiobitrate} "
+    if doMute:
+        audioargs = "-an "
+    if doScale:
+        if lowerfps:
+            fpsargs = ",fps=" + str(maxFramerate) + " "
+        else:
+            fpsargs = " "
+        if orientation == 'p':
+            scale = maxResSize / height
+            newres = str(round((width * scale) / 2) * 2) + ":" + str(maxResSize)
+        else:
+            scale = maxResSize / width
+            newres = str(maxResSize) + ":" + str(round((height * scale) / 2) * 2)
+        videoargs = f"-vf scale={newres}{fpsargs}-c:v {videoCodec} -b:v {videobitrate}"
+        if audioOnly:
+            videoargs = ""
+        ffmpeg_commands = [
+            f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile {tempdir}/fflog{launchTime} -pass 1 "
+            f"-an -f null {nullFile}",
+            f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile {tempdir}/fflog{launchTime} "
+            f"{audioargs}-pass 2 \"{fileout}\""]
+    else:
+        if lowerfps:
+            fpsargs = "-vf fps=" + str(maxFramerate) + " "
+        else:
+            fpsargs = ""
+        videoargs = f"{fpsargs}-c:v {videoCodec} -b:v {videobitrate}"
+        ffmpeg_commands = [
+            f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile {tempdir}/fflog{launchTime} "
+            f"-pass 1 -an -f null {nullFile}",
+            f"{executable} -y -i \"{filein}\" {videoargs}{preset} -passlogfile {tempdir}/fflog{launchTime} "
+            f"{audioargs}-pass 2 \"{fileout}\""]
+
+    logging.info("calling ffmpeg for two-pass, will now log commands")
+    logging.info(ffmpeg_commands[0])
+    if sendNotifs:
+        notif_twopass.send()
+    print(f"\n{strbold}{titlecolour}Running {othercolour}pass 1{titlecolour}...{strreset}")
+    os.system(ffmpeg_commands[0])
+    logging.info(ffmpeg_commands[1])
+    print(f"\n{strbold}{titlecolour}Running {othercolour}pass 2{titlecolour}...{strreset}")
+    os.system(ffmpeg_commands[1])
+    logging.info("called both commands")
+
+
+
+
+
+COMMAND
+
+ffmpeg -y -i input.webm -ss 0 -to 10 -filter_complex "[0:v]setpts=2*PTS,scale=128:128,minterpolate='mi_mode=mci:mc_mode=obmc:fps=60',drawtext=text='dog':fontcolor=whitesmoke:fontsize=32:x=(w-tw)/2:y=(16-th)/2,drawtext=text='butr':fontcolor=whitesmoke:fontsize=32:x=(w-tw)/2:y=h-16-(th/2)[v];[0:a]asetrate=24000,aresample=48000[a]" -map '[v]' -map '[a]' output.mp4
+
