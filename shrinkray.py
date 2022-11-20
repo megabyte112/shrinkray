@@ -881,16 +881,20 @@ def download(self):
     return [tempdir + "/" + os.listdir(tempdir)[0], filename]
 
 
-# bitrate (in Mbps) = Size / Length
-# divide target size by length in seconds
-def getbitrate(targetsize, inputfile, bitmult):
-    targetSizeKB = targetsize * bitmult
-    logging.info("target size: " + str(targetSizeKB) + "KB")
+def getlength(inputfile):
     lencmd = f"ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{inputfile}\""
     logging.info("fetching length with the following command")
     logging.info(lencmd)
     length = math.ceil(float(subprocess.getoutput(lencmd)))
     logging.info(f"video length: {length}s")
+    return length
+
+
+# bitrate (in Mbps) = Size / Length
+# divide target size by length in seconds
+def getbitrate(targetsize, length, bitmult):
+    targetSizeKB = targetsize * bitmult
+    logging.info("target size: " + str(targetSizeKB) + "KB")
     totalbitrate = targetSizeKB * 8 / length
     return totalbitrate
 
@@ -970,6 +974,7 @@ class ShrinkTask:
         logging.info("initialising new shrink task")
 
         # woah, that's a lotta variables
+        self.Length = 0
         self.Bitrate = 0.0
         self.VideoBitrate = 0.0
         self.AudioBitrate = 0.0
@@ -1152,21 +1157,22 @@ class ShrinkTask:
             logging.info(f"preset: {speeds[encodingSpeed - 1]}")
 
         self.OriginalSize = os.path.getsize(self.InputFileName) / 1000  # in KB
-
-        if self.DoLoud:
-            self.Args[1].append(f"volume={volumeMultiplier}")
-            self.Args[1].append(f"acrusher=.1:1:{crunchiness}:0:log")
-            self.Args[1].append(f"bass=g={bassMultiplier}")
-        elif self.DoReverb:
-            self.Args[1].append(f"aecho=1.0:0.3:35:1,bass=g=2")
-
-        self.Bitrate = getbitrate(self.InputFileName, self.TargetSize, self.BitrateMultiplier)
+        self.Length = getlength(self.InputFileName)
+        self.Bitrate = getbitrate(self.InputFileName, self.Length, self.BitrateMultiplier)
         self.SampleRate = getsamplerate(self.InputFileName)
         self.SplitResolution = getresolution(self.InputFileName)
         self.Width = self.SplitResolution[0]
         self.Height = self.SplitResolution[1]
         self.Orientation = self.SplitResolution[2]
         self.FrameRate = getfps(self.InputFileName)
+
+        # check loud or reverb
+        if self.DoLoud:
+            self.Args[1].append(f"volume={volumeMultiplier}")
+            self.Args[1].append(f"acrusher=.1:1:{crunchiness}:0:log")
+            self.Args[1].append(f"bass=g={bassMultiplier}")
+        elif self.DoReverb:
+            self.Args[1].append(f"aecho=1.0:0.3:35:1,bass=g=2")
 
         # check for meme mode
         if self.DoMeme:
@@ -1214,12 +1220,35 @@ class ShrinkTask:
         elif self.AudioBitrate < 1 and not self.DoMute:
             self.AudioBitrate *= 1000
             self.AudioBitrate = str(int(math.ceil(self.AudioBitrate)))
-
         self.Bitrate = round(self.Bitrate)
 
         logging.info(f"audio bitrate: {self.AudioBitrate}")
         logging.info(f"video bitrate: {self.VideoBitrate}")
         logging.info(f"total bitrate: {self.Bitrate}kbps")
+
+        # calculate args
+        self.Args = [executable, "-y", "-i", self.InputFileName]
+        if self.DoTrim:
+            if self.EndTime == -1:
+                self.EndTime = self.Length
+            self.Args.append(f"-ss {self.StartTime * (1/self.PlaybackSpeed)}")
+            self.Args.append(f"-to {self.EndTime * (1/self.PlaybackSpeed)}")
+
+        if self.Filters[0] is not None and self.Filters[1] is not None:
+            self.Args.append(f"-filter_complex [0:v]{','.join(self.Args[0])}[v];[0:a]{','.join(self.Args[1])}[a]")
+            self.Args.append("-map '[v]' -map '[a]'")
+        elif self.Filters[1] is not None:
+            self.Args.append("-filter:a " + ",".join(self.Filters[1]))
+        elif self.Filters[0] is not None:
+            self.Args.append("-filter:v " + ",".join(self.Filters[0]))
+
+        if not self.DoAudioOnly:
+            self.Args.append("-b:v " + self.VideoBitrate)
+
+        if self.DoMute:
+            self.Args.append("-an")
+        else:
+            self.Args.append("-b:a " + self.AudioBitrate)
 
 
 shrink = ShrinkTask()
@@ -1229,52 +1258,52 @@ shrink.shrink()
 # MUTE
 # SHRINK
 
-# # we have everything, let's do this!!
-# if not doMute and not audioOnly:
-#     args = [executable, "-y", "-i", filein, "-filter_complex",
-#             "[0:v]"+",".join(videoFilters)+"[v];[0:a]"+",".join(audioFilters)+"[a]", "-map", "'[v]'",
-#             "-map", "'[a]'", "-b:v", videobitrate, "-b:a", audiobitrate, fileout]
-#
-#
-# # delete temp files
-# shutil.rmtree(tempdir)
-#
-# if countfiles("temp") == 0:
-#     os.rmdir("temp")
-#
-# # done!
-# clearscreen("Complete!", strgreen)
-# newdisplaysize = round(os.path.getsize(fileout) / 1000)  # in kB
-# newkibisize = kibiconvert(newdisplaysize)
-# logging.info(f"size of output file: {newdisplaysize}kB, or {newkibisize}kiB")
-# expected = target_size
-# failed = False
-# if newdisplaysize == 0:
-#     failed = True
-#     logging.warning("failed!")
-#     if sendNotifs:
-#         notif_failed.send()
-#     print(f"\n{strred}{strbold}Shrinking failed!{strunbold} Try adjusting some settings.")
-#     print(f"If you can't fix it, tell megabyte112 or open a GitHub issue.")
-#     print(f"https://github.com/megabyte112/shrinkray/issues{strreset}")
-# elif newdisplaysize > expected != 0:
-#     logging.info("file is larger than expected!")
-#     if sendNotifs:
-#         notif_toobig.send()
-#     print(
-#         f"\n{strbold}{stryellow}It looks like shrinkray couldn't shrink your file as much as you requested.{strreset}")
-#     printsizes(originalsize, newdisplaysize)
-#     print(f"{stryellow}If you need it to be smaller, try lowering the target size and running shrinkray again.")
-#     print(f"The file was still saved.{strreset}")
-# else:
-#     logging.info("complete!")
-#     if sendNotifs:
-#         notif_complete.send()
-#     print(f"\n{strbold}{strgreen}Shrinking complete!\nCheck the output folder for your file.{strreset}")
-#     printsizes(originalsize, newdisplaysize)
-# logging.shutdown()
-# if openInFileMgr and not failed:
-#     showinfm.show_in_file_manager(fileout)
-# if waitWhenDone:
-#     input(f"\nYou can now press {strbold}[Enter]{strunbold} or {strbold}close this window{strunbold} to exit.")
-# sys.exit()
+# we have everything, let's do this!!
+if not doMute and not audioOnly:
+    args = [executable, "-y", "-i", filein, "-filter_complex",
+            "[0:v]"+",".join(videoFilters)+"[v];[0:a]"+",".join(audioFilters)+"[a]", "-map", "'[v]'",
+            "-map", "'[a]'", "-b:v", videobitrate, "-b:a", audiobitrate, fileout]
+
+
+# delete temp files
+shutil.rmtree(tempdir)
+
+if countfiles("temp") == 0:
+    os.rmdir("temp")
+
+# done!
+clearscreen("Complete!", strgreen)
+newdisplaysize = round(os.path.getsize(fileout) / 1000)  # in kB
+newkibisize = kibiconvert(newdisplaysize)
+logging.info(f"size of output file: {newdisplaysize}kB, or {newkibisize}kiB")
+expected = target_size
+failed = False
+if newdisplaysize == 0:
+    failed = True
+    logging.warning("failed!")
+    if sendNotifs:
+        notif_failed.send()
+    print(f"\n{strred}{strbold}Shrinking failed!{strunbold} Try adjusting some settings.")
+    print(f"If you can't fix it, tell megabyte112 or open a GitHub issue.")
+    print(f"https://github.com/megabyte112/shrinkray/issues{strreset}")
+elif newdisplaysize > expected != 0:
+    logging.info("file is larger than expected!")
+    if sendNotifs:
+        notif_toobig.send()
+    print(
+        f"\n{strbold}{stryellow}It looks like shrinkray couldn't shrink your file as much as you requested.{strreset}")
+    printsizes(originalsize, newdisplaysize)
+    print(f"{stryellow}If you need it to be smaller, try lowering the target size and running shrinkray again.")
+    print(f"The file was still saved.{strreset}")
+else:
+    logging.info("complete!")
+    if sendNotifs:
+        notif_complete.send()
+    print(f"\n{strbold}{strgreen}Shrinking complete!\nCheck the output folder for your file.{strreset}")
+    printsizes(originalsize, newdisplaysize)
+logging.shutdown()
+if openInFileMgr and not failed:
+    showinfm.show_in_file_manager(fileout)
+if waitWhenDone:
+    input(f"\nYou can now press {strbold}[Enter]{strunbold} or {strbold}close this window{strunbold} to exit.")
+sys.exit()
